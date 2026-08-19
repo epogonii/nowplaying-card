@@ -1045,7 +1045,9 @@ const MediaCard = GObject.registerClass({
 
     _sync() {
         this._title.text = this._player.trackTitle || '';
-        this._subtitle.text = this._subtitleText();
+        const subtitle = this._subtitleText();
+        this._subtitle.text = subtitle;
+        this._subtitle.visible = subtitle !== '';
 
         // Players emit 'changed' for every position or volume tweak; only
         // touch the texture when the artwork or the fallback changed.
@@ -1286,13 +1288,15 @@ const MediaCard = GObject.registerClass({
             new Gio.ThemedIcon({name: 'audio-x-generic-symbolic'});
     }
 
+    // The artist, the album, or nothing at all. A film or a file with no tags
+    // used to get the player's own name here, which the icon beside the cover
+    // has already said, and the line is dropped instead of standing empty.
     _subtitleText() {
         const artists = this._player.trackArtists.join(', ');
         const album = this._metadataValue('xesam:album');
-        const parts = [artists, typeof album === 'string' ? album : ''].filter(p => p);
-        if (parts.length === 0)
-            return this._player.app?.get_name() || '';
-        return parts.join(' - ');
+        return [artists, typeof album === 'string' ? album : '']
+            .filter(part => part)
+            .join(' - ');
     }
 
     // Art as tall as everything standing next to it, in the shape it came in.
