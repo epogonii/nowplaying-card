@@ -91,7 +91,9 @@ Preferences:
 
 #### From extensions.gnome.org
 
-[extensions.gnome.org/extension/10736/now-playing-card](https://extensions.gnome.org/extension/10736/now-playing-card/)
+<a href="https://extensions.gnome.org/extension/10736/now-playing-card/"><img src="docs/get-it-on-ego.png" width="228" alt="Get it on GNOME Extensions"></a>
+
+Review takes its time, so the version there can sit behind this branch.
 
 #### From a release
 
