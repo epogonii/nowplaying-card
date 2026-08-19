@@ -17,9 +17,53 @@ function model() {
         .map(i => i._model).find(m => m) ?? null;
 }
 
+// A pointer of our own. Synthetic 'clicked' signals skip the gesture layer
+// entirely, which is exactly where a panel button and the buttons inside it
+// fight over a press, so the clicks here go in through the seat.
+let virtualPointer = null;
+
+function pointer() {
+    if (virtualPointer === null) {
+        virtualPointer = Clutter.get_default_backend().get_default_seat()
+            .create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
+    }
+    return virtualPointer;
+}
+
+function clickAt(actor, button = Clutter.BUTTON_PRIMARY) {
+    const [x, y] = actor.get_transformed_position();
+    const [w, h] = actor.get_transformed_size();
+    const device = pointer();
+    const at = () => GLib.get_monotonic_time();
+
+    device.notify_absolute_motion(at(), x + w / 2, y + h / 2);
+    device.notify_button(at(), button, Clutter.ButtonState.PRESSED);
+    device.notify_button(at(), button, Clutter.ButtonState.RELEASED);
+}
+
+function scrollAt(actor, dy) {
+    const [x, y] = actor.get_transformed_position();
+    const [w, h] = actor.get_transformed_size();
+    const device = pointer();
+
+    device.notify_absolute_motion(GLib.get_monotonic_time(), x + w / 2, y + h / 2);
+    device.notify_discrete_scroll(GLib.get_monotonic_time(),
+        dy < 0 ? Clutter.ScrollDirection.UP : Clutter.ScrollDirection.DOWN,
+        Clutter.ScrollSource.WHEEL);
+}
+
 function qsIndicator() {
     return Main.panel.statusArea.quickSettings._indicators.get_children()
         .find(i => i._model) ?? null;
+}
+
+function host() {
+    return stateObj()?._host ?? null;
+}
+
+function hostCards() {
+    const stack = host()?._model?.stack;
+    return stack ? [...stack._cards.values()] : [];
 }
 
 function cards() {
@@ -326,11 +370,12 @@ export default class ProbeQs extends Extension {
 
         // Players the preferences leave out get no card.
         this._at(49, () => stateObj()?._settings.set_strv('ignored-players', ['chromium']));
-        this._at(51, () => log(`PROBE IGNORE cards=${cards().length} (expect 2) ` +
-            `order=${order()} shouldShow=${model()?.shouldShow}`));
+        this._at(51, () => log(`PROBE IGNORE cards=${hostCards().length} (expect 2) ` +
+            `buses=${hostCards().map(c => c._player.busName.replace('org.mpris.MediaPlayer2.', '')).join(',')} ` +
+            `shouldShow=${host()?._model.shouldShow}`));
         this._at(53, () => stateObj()?._settings.set_strv('ignored-players', []));
-        this._at(55, () => log(`PROBE IGNORE cleared cards=${cards().length} (expect 3) ` +
-            `order=${order()}`));
+        this._at(55, () => log(`PROBE IGNORE cleared cards=${hostCards().length} (expect 3) ` +
+            `buses=${hostCards().map(c => c._player.busName.replace('org.mpris.MediaPlayer2.', '')).join(',')}`));
 
         // Order follows what is playing: the first stub pauses at t=66 and
         // starts again at t=86.
@@ -447,7 +492,35 @@ export default class ProbeQs extends Extension {
                 `pin=${label?.pin} width=${label?.get_width()} (expect false, true)`);
         });
 
-        this._at(47, () => {
+        // The same presses a hand makes. The events are queued, not answered
+        // inside the call that sends them, so every check waits a beat.
+        this._at(48.5, () => {
+            panelButton()?.menu.close();
+            clickAt(panelButton()._nextButton);
+        });
+        this._at(48.9, () => log(`PROBE REALCLICK next menuOpen=${panelButton()?.menu.isOpen} ` +
+            `(expect false, and a Next in the stub log)`));
+
+        this._at(49.3, () => clickAt(panelButton()._playButton));
+        this._at(49.7, () => log(`PROBE REALCLICK play menuOpen=${panelButton()?.menu.isOpen} ` +
+            `icon=${panelButton()?._playButton.child.icon_name} (expect false, pause)`));
+
+        this._at(50.1, () => clickAt(panelButton()._model.equalizer));
+        this._at(50.5, () => log(`PROBE REALCLICK icon menuOpen=${panelButton()?.menu.isOpen} ` +
+            `(expect true)`));
+
+        this._at(50.9, () => {
+            panelButton()?.menu.close();
+            clickAt(panelButton()._model.equalizer, Clutter.BUTTON_MIDDLE);
+        });
+        this._at(51.5, () => log(`PROBE REALCLICK middle menuOpen=${panelButton()?.menu.isOpen} ` +
+            `status=${panelButton()?._model.activePlayer?.status} (expect false, and a PlayPause)`));
+
+        this._at(52.1, () => scrollAt(panelButton()._model.equalizer, -1));
+        this._at(52.5, () => log(`PROBE REALSCROLL up menuOpen=${panelButton()?.menu.isOpen} ` +
+            `(expect false, and a Previous in the stub log)`));
+
+        this._at(54, () => {
             stateObj()?._settings.set_string('location', 'quick-settings');
             stateObj()?._settings.set_string('panel-text', 'none');
             stateObj()?._settings.set_boolean('panel-controls', false);
@@ -461,28 +534,28 @@ export default class ProbeQs extends Extension {
         // stubs are gone.
         this._at(48, () => {
             stateObj()?._settings.set_string('indicator-visibility', 'never');
-            log(`PROBE VIS never shouldShow=${model()?.shouldShow} ` +
-                `visible=${qsIndicator()?.visible} cards=${cards().length} ` +
-                `(expect false, false, 3)`);
+            log(`PROBE VIS never shouldShow=${host()?._model.shouldShow} ` +
+                `visible=${host()?.visible} cards=${hostCards().length} ` +
+                `(expect false, false, 2)`);
         });
 
         this._at(50, () => {
             stateObj()?._settings.set_string('indicator-visibility', 'active');
-            log(`PROBE VIS active shouldShow=${model()?.shouldShow} ` +
-                `visible=${qsIndicator()?.visible} (expect true, true)`);
+            log(`PROBE VIS active shouldShow=${host()?._model.shouldShow} ` +
+                `visible=${host()?.visible} (expect true, true)`);
         });
 
         this._at(92, () => {
             stateObj()?._settings.set_string('indicator-visibility', 'always');
-            log(`PROBE VIS always shouldShow=${model()?.shouldShow} ` +
-                `visible=${qsIndicator()?.visible} cards=${cards().length} ` +
+            log(`PROBE VIS always shouldShow=${host()?._model.shouldShow} ` +
+                `visible=${host()?.visible} cards=${hostCards().length} ` +
                 `(expect true, true, 0)`);
         });
 
         this._at(94, () => {
             stateObj()?._settings.set_string('indicator-visibility', 'active');
-            log(`PROBE VIS active idle shouldShow=${model()?.shouldShow} ` +
-                `visible=${qsIndicator()?.visible} (expect false, false)`);
+            log(`PROBE VIS active idle shouldShow=${host()?._model.shouldShow} ` +
+                `visible=${host()?.visible} (expect false, false)`);
         });
 
         // Harness kills the stubs at t=90.
@@ -493,8 +566,9 @@ export default class ProbeQs extends Extension {
         });
     }
 
+    // Milliseconds underneath, so a step can sit between two whole seconds.
     _at(seconds, fn) {
-        this._ids.push(GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
+        this._ids.push(GLib.timeout_add(GLib.PRIORITY_DEFAULT, Math.round(seconds * 1000), () => {
             try {
                 fn();
             } catch (e) {

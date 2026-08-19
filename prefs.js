@@ -1,5 +1,7 @@
 import Adw from 'gi://Adw';
+import Gdk from 'gi://Gdk';
 import Gio from 'gi://Gio';
+import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
@@ -11,6 +13,13 @@ const PANEL_SCROLLS = ['none', 'track', 'volume'];
 const MIDDLE_CLICKS = ['none', 'play-pause', 'next'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
+
+const PAYPAL_URL = 'https://www.paypal.com/paypalme/pogonii';
+const WALLETS = [
+    ['Bitcoin', '18KtJEw8gt2oyicszwMUkbAKMHHXS9nwKR'],
+    ['Ethereum', '0x4f2fb6a154526a72d612afa2e3a8129e30ca0996'],
+    ['Cardano', 'DdzFFzCqrhsmpnmUqivufj3TmDzksP4HKzcksRUNVr8xA4Gbj7PngV6TfkZuqUqeeKxp138t2Ftd1HypLFkUQ8F1hGtEmyhTP9VnZcUt'],
+];
 const VISIBILITIES = ['always', 'active', 'never'];
 
 export default class NowPlayingPreferences extends ExtensionPreferences {
@@ -209,6 +218,8 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         const ignoreRow = new Adw.EntryRow({title: _('Ignored players')});
         players.add(ignoreRow);
 
+        this._addSupportGroup(page);
+
         this._bindEnum(settings, 'location', LOCATIONS, locationRow);
         this._bindEnum(settings, 'panel-box', PANEL_BOXES, boxRow);
         this._bindEnum(settings, 'panel-text', PANEL_TEXTS, textRow);
@@ -247,6 +258,51 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.connect('changed::location', syncSensitivity);
         settings.connect('changed::panel-text', syncSensitivity);
         syncSensitivity();
+    }
+
+    // Nothing to do with the extension working; a place to say thanks from,
+    // and nothing here asks for anything.
+    _addSupportGroup(page) {
+        const group = new Adw.PreferencesGroup({
+            title: _('Support'),
+            description: _('The extension is free and stays free. If it earned a coffee:'),
+        });
+        page.add(group);
+
+        const paypal = new Adw.ActionRow({
+            title: _('PayPal'),
+            subtitle: PAYPAL_URL,
+            activatable: true,
+        });
+        paypal.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
+        paypal.connect('activated', () =>
+            Gio.AppInfo.launch_default_for_uri(PAYPAL_URL, null));
+        group.add(paypal);
+
+        for (const [name, address] of WALLETS) {
+            const row = new Adw.ActionRow({
+                title: name,
+                subtitle: address,
+                subtitle_selectable: true,
+            });
+
+            const copy = new Gtk.Button({
+                icon_name: 'edit-copy-symbolic',
+                tooltip_text: _('Copy the address'),
+                valign: Gtk.Align.CENTER,
+                css_classes: ['flat'],
+            });
+            copy.connect('clicked', () => this._copy(address));
+            row.add_suffix(copy);
+            group.add(row);
+        }
+    }
+
+    _copy(text) {
+        const value = new GObject.Value();
+        value.init(GObject.TYPE_STRING);
+        value.set_string(text);
+        Gdk.Display.get_default()?.get_clipboard().set_value(value);
     }
 
     // ComboRow works on indices, the schema stores enum nicks.

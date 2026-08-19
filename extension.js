@@ -78,7 +78,13 @@ const CONTROL_ICON_SIZE = 20;
 const PLAY_ICON_SIZE = 26;
 const COMPACT_CONTROL_ICON_SIZE = 16;
 const COMPACT_PLAY_ICON_SIZE = 20;
-const PANEL_CONTROL_ICON_SIZE = 16;
+const PANEL_CONTROL_ICON_SIZE = 14;
+
+// GNOME 50 opens a panel menu from a Clutter gesture instead of the event
+// vfunc. A gesture on the button wins over the buttons inside it, and there is
+// no event vfunc left above to chain to, so both the menu and the transport
+// have to be answered by gestures of our own where the class exists.
+const HAS_CLICK_GESTURE = typeof Clutter.ClickGesture !== 'undefined';
 const POLL_MS = 1000;
 const SEEK_SETTLE_MS = 1000;
 const SEEK_GUARD_MS = 800;
@@ -2024,6 +2030,16 @@ class NowPlayingButton extends PanelMenu.Button {
         this._nextButton = this._addPanelControl('media-skip-forward-symbolic',
             () => this._model.next(), PRESS_NUDGE);
 
+        if (HAS_CLICK_GESTURE) {
+            this._clickGesture?.set_enabled(false);
+            this._addGesture(this, Clutter.BUTTON_PRIMARY, () => {
+                if (!this._pointerOverControls())
+                    this.menu.toggle();
+            });
+            this._addGesture(this, Clutter.BUTTON_MIDDLE,
+                () => this._middleClickAction());
+        }
+
         this.menu.box.add_style_class_name('np-menu');
         this.menu.box.add_child(this._model.stack);
 
@@ -2035,10 +2051,8 @@ class NowPlayingButton extends PanelMenu.Button {
         this._syncVisibility();
     }
 
-    // A button of its own inside the panel button: St.Button answers the press
-    // itself, so it never reaches PanelMenu.Button and the popup stays shut.
-    // The middle button is not one St.Button takes, so it still opens the menu
-    // or does what the preferences say.
+    // A button of its own inside the panel button. It answers the press and the
+    // menu stays shut, so a track can be changed without the popup appearing.
     _addPanelControl(iconName, callback, nudge = 0) {
         const button = new St.Button({
             style_class: 'np-panel-control',
@@ -2048,22 +2062,58 @@ class NowPlayingButton extends PanelMenu.Button {
                 icon_size: PANEL_CONTROL_ICON_SIZE,
             }),
         });
-        button.connect('clicked', () => {
+
+        const act = () => {
             if (readSetting(this._settings, 'animate-buttons'))
                 animatePress(button, nudge);
             callback();
-        });
+        };
+
+        if (HAS_CLICK_GESTURE)
+            this._addGesture(button, Clutter.BUTTON_PRIMARY, act);
+        else
+            button.connect('clicked', act);
+
         this._controls.add_child(button);
         return button;
     }
 
-    // PanelMenu.Button opens its menu from the generic event signal, so the
+    _addGesture(actor, mouseButton, callback) {
+        const gesture = new Clutter.ClickGesture();
+        gesture.set_n_clicks_required(1);
+        gesture.set_required_button?.(mouseButton);
+        gesture.set_recognize_on_press?.(true);
+        gesture.connect('recognize', () => {
+            callback();
+            return Clutter.EVENT_STOP;
+        });
+        actor.add_action(gesture);
+        return gesture;
+    }
+
+    // A press that landed on the transport belongs to it, not to the menu: the
+    // gesture on the whole button cannot tell where it started on its own.
+    _pointerOverControls() {
+        if (!this._controls.visible)
+            return false;
+
+        const [x, y] = global.get_pointer();
+        const actor = global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, x, y);
+        return !!actor && this._controls.contains(actor);
+    }
+
+    // Older shells open the menu from the generic event signal, so there the
     // wheel and the middle button have to be answered before that happens.
     vfunc_event(event) {
         const type = event.type();
 
         if (type === Clutter.EventType.SCROLL && this._onScroll(event))
             return Clutter.EVENT_STOP;
+
+        // Newer shells answer the buttons with gestures, and St.Widget has no
+        // event vfunc to chain into.
+        if (HAS_CLICK_GESTURE)
+            return Clutter.EVENT_PROPAGATE;
 
         const middle = (type === Clutter.EventType.BUTTON_PRESS ||
             type === Clutter.EventType.BUTTON_RELEASE) &&
@@ -2147,11 +2197,10 @@ class NowPlayingButton extends PanelMenu.Button {
 
         this._controls.visible = wanted;
 
-        // Text of its own width would walk the buttons sideways on every
-        // track, so with buttons the label always keeps the width it is
-        // allowed; on its own it is a preference.
-        this._panelLabel.pin = wanted ||
-            readSetting(this._settings, 'panel-text-fixed');
+        // Whether the text keeps its full width is the preference's business
+        // only. Pinning it whenever the transport is shown filled the gap
+        // between a short title and the buttons with nothing.
+        this._panelLabel.pin = readSetting(this._settings, 'panel-text-fixed');
         if (!wanted)
             return;
 

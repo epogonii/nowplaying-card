@@ -65,8 +65,11 @@
     -slider-handle-radius: 0;
 }
 
+/* The handle shows up under the pointer: at rest this reads as a progress
+   line, and only turns into something to drag once it is aimed at. */
 .np-seek:hover, .np-seek:focus {
     -barlevel-height: 6px;
+    -slider-handle-radius: 6px;
 }
 
 .np-times {
@@ -129,6 +132,7 @@
 
 .np-card-compact .np-seek:hover, .np-card-compact .np-seek:focus {
     -barlevel-height: 5px;
+    -slider-handle-radius: 5px;
 }
 
 .np-top-row {
@@ -192,12 +196,17 @@
     opacity: 0.7;
 }
 
-/* Thicker than the seek bar, and with a handle: this one is a control. */
+/* Same treatment as the seek bar: a plain line until it is aimed at. */
 .np-volume {
     height: 16px;
     min-width: 6em;
     -barlevel-height: 4px;
-    -slider-handle-radius: 5px;
+    -slider-handle-radius: 0;
+}
+
+.np-volume:hover, .np-volume:focus {
+    -barlevel-height: 6px;
+    -slider-handle-radius: 6px;
 }
 
 /* A toggle that is off keeps its place but steps back. */
@@ -209,16 +218,17 @@
     spacing: 4px;
 }
 
-/* Transport in the panel: flat, marked only under the pointer. */
+/* Transport in the panel: flat, tight, marked only under the pointer. Smaller
+   than a status icon on purpose, so three of them read as one group. */
 .np-panel-controls {
-    spacing: 2px;
+    spacing: 0;
 }
 
 .np-panel-control {
     border-radius: 99px;
     border: none;
     box-shadow: none;
-    padding: 0 3px;
+    padding: 0 2px;
 }
 
 .np-panel-control:hover, .np-panel-control:focus {
