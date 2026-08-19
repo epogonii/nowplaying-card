@@ -438,6 +438,7 @@ class ScrollingLabel extends St.Widget {
         this._idleId = null;
         this._timeline = null;
         this._away = 0;
+        this._walkText = null;
 
         this.connect('notify::mapped', () => this._restart());
         this.connect('destroy', () => this._stop());
@@ -549,7 +550,12 @@ class ScrollingLabel extends St.Widget {
         // amount of text that does not fit; starting the walk over each time
         // would leave a title in a busy popup standing at its first word for
         // good.
-        const carried = this._timeline?.get_elapsed_time() ?? 0;
+        // A new title starts from the beginning: the pause at the start is
+        // there to be read, and the time carried over belongs to text that is
+        // no longer on screen.
+        const same = this._label.text === this._walkText;
+        const carried = same ? this._timeline?.get_elapsed_time() ?? 0 : 0;
+        this._walkText = this._label.text;
 
         this._stopWalk();
         this._label.translation_x = 0;

@@ -694,6 +694,17 @@ export default class ProbeQs extends Extension {
         this._at(63, () => Main.panel.statusArea.quickSettings.menu.open(false));
         this._at(63.5, () => sample('second', 5));
 
+        // A different title has to start the walk over: time carried across a
+        // track change would drop a new song in mid-scroll, past words nobody
+        // has read yet.
+        this._at(69, () => sample('third', 6));
+        this._at(70.2, () => {
+            const card = cards().find(c => c._title._overflow > 0);
+            if (card)
+                card._title.text = 'Another Title Entirely That Also Does ' +
+                    'Not Come Close To Fitting Inside This Card';
+        });
+
         // Always, only while a player runs, or never at all. With players
         // around only 'never' differs; the other two part company once the
         // stubs are gone.
