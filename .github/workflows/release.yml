@@ -56,11 +56,11 @@ jobs:
             CHANGELOG.md > notes.md
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             if [ -s notes.md ]; then
-              gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
+              gh release edit "$GITHUB_REF_NAME" --title "$version" --notes-file notes.md
             fi
             gh release upload "$GITHUB_REF_NAME" "$ZIP" --clobber
           elif [ -s notes.md ]; then
-            gh release create "$GITHUB_REF_NAME" --notes-file notes.md "$ZIP"
+            gh release create "$GITHUB_REF_NAME" --title "$version" --notes-file notes.md "$ZIP"
           else
-            gh release create "$GITHUB_REF_NAME" --generate-notes "$ZIP"
+            gh release create "$GITHUB_REF_NAME" --title "$version" --generate-notes "$ZIP"
           fi
