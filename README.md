@@ -100,10 +100,9 @@ Include, please:
 
 The extension is free and stays free. If it earned a coffee:
 
-[![PayPal](https://img.shields.io/badge/PayPal-pogonii-0070ba)](https://www.paypal.com/paypalme/pogonii)
-
 | | |
 | --- | --- |
+| PayPal | **[paypal.me/pogonii](https://www.paypal.com/paypalme/pogonii)** |
 | Bitcoin | `18KtJEw8gt2oyicszwMUkbAKMHHXS9nwKR` |
 | Ethereum | `0x4f2fb6a154526a72d612afa2e3a8129e30ca0996` |
 | Cardano | `DdzFFzCqrhsmpnmUqivufj3TmDzksP4HKzcksRUNVr8xA4Gbj7PngV6TfkZuqUqeeKxp138t2Ftd1HypLFkUQ8F1hGtEmyhTP9VnZcUt` |
