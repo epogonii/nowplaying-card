@@ -7,6 +7,7 @@ import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
+import Cairo from 'cairo';
 
 import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Config from 'resource:///org/gnome/shell/misc/config.js';
@@ -135,6 +136,8 @@ const DEFAULTS = {
     'hide-builtin-media': true,
     'card-layout': 'auto',
     'animate-icon': true,
+    'equalizer-style': 'bars',
+    'max-cards': 3,
     'cover-size': 'medium',
     'show-progress': true,
     'show-volume': true,
@@ -173,10 +176,40 @@ const N_BARS = 3;
 const BAR_WIDTH = 3;
 const BAR_GAP = 2;
 const EQUALIZER_WIDTH = N_BARS * BAR_WIDTH + (N_BARS - 1) * BAR_GAP;
-const FRAME_MS = 80;
+// The bars are redrawn on the frame clock of the actor, which offers one frame
+// per frame of the screen; this is the shortest gap between two of the frames
+// that are used. 33ms takes every second frame at 60Hz and every fifth at
+// 144Hz, so the step is the same whatever the monitor runs at and half of the
+// frames cost nothing.
+const FRAME_MS = 33;
 const SPEEDS = [7.1, 9.7, 5.3];
 const PHASES = [0, 2.1, 4.2];
 const STATIC_HEIGHTS = [0.35, 0.7, 0.5];
+// Seconds for one turn around the colour wheel, and how far apart the bars sit
+// on it, for the colour-cycling style.
+const HUE_PERIOD = 6;
+const HUE_SPREAD = 1 / N_BARS;
+const HUE_SATURATION = 0.85;
+
+// Hue in turns, saturation and value in 0 to 1, out as red, green and blue in
+// the same range.
+function hsvToRgb(hue, saturation, value) {
+    const h = (((hue % 1) + 1) % 1) * 6;
+    const sector = Math.floor(h);
+    const f = h - sector;
+    const p = value * (1 - saturation);
+    const q = value * (1 - saturation * f);
+    const t = value * (1 - saturation * (1 - f));
+
+    switch (sector) {
+    case 0: return [value, t, p];
+    case 1: return [q, value, p];
+    case 2: return [p, value, t];
+    case 3: return [p, q, value];
+    case 4: return [t, p, value];
+    default: return [value, p, q];
+    }
+}
 
 // Equalizer bars, drawn with the panel's own foreground color so it follows
 // the theme. Animates only while something is playing.
@@ -190,8 +223,10 @@ class EqualizerIcon extends St.DrawingArea {
 
         this._playing = false;
         this._animate = true;
-        this._timerId = null;
-        this._frame = 0;
+        this._iconStyle = DEFAULTS['equalizer-style'];
+        this._timeline = null;
+        this._start = GLib.get_monotonic_time();
+        this._painted = 0;
 
         // A new system theme means a new foreground colour: redraw with it. A
         // new scale factor arrives the same way, and that one changes the width.
@@ -199,6 +234,11 @@ class EqualizerIcon extends St.DrawingArea {
             this.queue_relayout();
             this.queue_repaint();
         });
+        // Animations turned off in the system settings are turned off here too.
+        St.Settings.get().connectObject('notify::enable-animations', () => {
+            this._updateTimer();
+            this.queue_repaint();
+        }, this);
         this.connect('destroy', () => this._stopTimer());
     }
 
@@ -228,6 +268,20 @@ class EqualizerIcon extends St.DrawingArea {
         return this._animate;
     }
 
+    // Square ends, rounded ends, or rounded ends in colours that move: the
+    // shape of the bars is the same either way, so only the drawing changes.
+    set iconStyle(style) {
+        if (this._iconStyle === style)
+            return;
+
+        this._iconStyle = style;
+        this.queue_repaint();
+    }
+
+    get iconStyle() {
+        return this._iconStyle;
+    }
+
     // The height comes from the stylesheet and doubles in a 200% session, so
     // the width has to as well: an actor size is in stage pixels and follows
     // nothing on its own.
@@ -240,18 +294,39 @@ class EqualizerIcon extends St.DrawingArea {
         return this.get_theme_node().adjust_preferred_width(width, width);
     }
 
-    _updateTimer() {
-        const wanted = this._playing && this._animate && this.mapped;
+    get _moving() {
+        return this._playing && this._animate &&
+            St.Settings.get().enable_animations;
+    }
 
-        if (wanted && this._timerId === null) {
-            this._timerId = GLib.timeout_add(GLib.PRIORITY_LOW, FRAME_MS, () => {
-                this._frame++;
-                this.queue_repaint();
-                return GLib.SOURCE_CONTINUE;
+    _updateTimer() {
+        const wanted = this._moving && this.mapped;
+
+        if (wanted && this._timeline === null) {
+            // A timer of our own fires whenever it likes, and a frame that
+            // lands between two frames of the screen is a frame that shows up
+            // late. The frame clock of the actor never does.
+            this._timeline = new Clutter.Timeline({
+                actor: this,
+                duration: 1000,
+                repeat_count: -1,
             });
+            this._timeline.connect('new-frame', () => this._onFrame());
+            this._timeline.start();
         } else if (!wanted) {
             this._stopTimer();
         }
+    }
+
+    // The clock offers more frames than these bars have any use for: this takes
+    // one every FRAME_MS and lets the rest go by untouched.
+    _onFrame() {
+        const now = GLib.get_monotonic_time();
+        if (now - this._painted < FRAME_MS * 1000)
+            return;
+
+        this._painted = now;
+        this.queue_repaint();
     }
 
     vfunc_repaint() {
@@ -260,17 +335,33 @@ class EqualizerIcon extends St.DrawingArea {
         const cr = this.get_context();
         const color = themeNode.get_foreground_color();
 
-        cr.setSourceRGBA(
-            color.red / 255, color.green / 255, color.blue / 255,
-            color.alpha / 255);
-
         const scale = scaleFactor();
         const barWidth = BAR_WIDTH * scale;
         const gap = BAR_GAP * scale;
-        const t = this._frame * (FRAME_MS / 1000);
-        const minHeight = Math.round(height * 0.25);
+        const rounded = this._iconStyle !== 'bars';
+        const rainbow = this._iconStyle === 'rainbow';
+        const moving = this._moving;
+        const t = (GLib.get_monotonic_time() - this._start) / 1000000;
+        // A round end is half a bar tall on its own, so a bar that short is as
+        // short as the shape goes.
+        const minHeight = Math.max(Math.round(height * 0.25),
+            rounded ? barWidth : 0);
         const maxHeight = Math.round(height * 0.85);
-        const moving = this._playing && this._animate;
+        // Full-strength colour disappears against a light panel, so the cycle
+        // is taken down a notch where the theme draws in dark ink.
+        const light = (color.red + color.green + color.blue) / 3 > 127;
+        const value = light ? 1 : 0.8;
+
+        if (rounded) {
+            cr.setLineWidth(barWidth);
+            cr.setLineCap(Cairo.LineCap.ROUND);
+        }
+
+        if (!rainbow) {
+            cr.setSourceRGBA(
+                color.red / 255, color.green / 255, color.blue / 255,
+                color.alpha / 255);
+        }
 
         for (let i = 0; i < N_BARS; i++) {
             const wave = moving
@@ -278,12 +369,29 @@ class EqualizerIcon extends St.DrawingArea {
                 : STATIC_HEIGHTS[i];
             const barHeight = minHeight + (maxHeight - minHeight) * wave;
             const x = i * (barWidth + gap);
-            const y = (height + barHeight) / 2;
+            const bottom = (height + barHeight) / 2;
 
-            cr.rectangle(x, y - barHeight, barWidth, barHeight);
+            if (rainbow) {
+                // Standing still means standing on one colour each, so a
+                // paused icon is still three colours and not three greys.
+                const hue = i * HUE_SPREAD + (moving ? t / HUE_PERIOD : 0);
+                const [red, green, blue] = hsvToRgb(hue, HUE_SATURATION, value);
+                cr.setSourceRGBA(red, green, blue, color.alpha / 255);
+            }
+
+            if (rounded) {
+                // A round end adds half the line width past each end of the
+                // line, so the line is that much shorter than the bar it draws.
+                const middle = x + barWidth / 2;
+                cr.moveTo(middle, bottom - barHeight + barWidth / 2);
+                cr.lineTo(middle, bottom - barWidth / 2);
+                cr.stroke();
+            } else {
+                cr.rectangle(x, bottom - barHeight, barWidth, barHeight);
+                cr.fill();
+            }
         }
 
-        cr.fill();
         cr.$dispose();
     }
 
@@ -300,10 +408,8 @@ class EqualizerIcon extends St.DrawingArea {
     }
 
     _stopTimer() {
-        if (this._timerId !== null) {
-            GLib.source_remove(this._timerId);
-            this._timerId = null;
-        }
+        this._timeline?.stop();
+        this._timeline = null;
     }
 });
 
@@ -530,6 +636,8 @@ const CARD_OPTIONS = {
     sortPlayingFirst: DEFAULTS['sort-playing-first'],
     scrollText: DEFAULTS['scroll-text'],
     animate: DEFAULTS['animate-icon'],
+    equalizerStyle: DEFAULTS['equalizer-style'],
+    maxCards: DEFAULTS['max-cards'],
 };
 
 // The card: cover and labels on top, a seek bar with
@@ -833,6 +941,7 @@ const MediaCard = GObject.registerClass({
 
         this._equalizer.visible = !compact;
         this._equalizer.animate = options.animate;
+        this._equalizer.iconStyle = options.equalizerStyle;
         this._equalizer.playing = this.playing;
 
         const controlSize = compact
@@ -1339,17 +1448,31 @@ class CardStack extends St.BoxLayout {
         return cards.find(card => card.playing) ?? cards[0] ?? null;
     }
 
+    // Whatever is playing first, the rest in the order they turned up in.
+    _ranked() {
+        return [...this._cards.values()]
+            .sort((a, b) => Number(b.playing) - Number(a.playing));
+    }
+
+    // The cards the popup has room for. A player that is playing is always one
+    // of them, whichever order the preferences ask for: the quiet ones give up
+    // their place first, and the ones past the limit are hidden rather than
+    // dropped, so a card comes straight back when a place frees up.
+    _shownCards() {
+        return this._ranked().slice(0, this._options.maxCards);
+    }
+
     // Whatever is playing belongs on top, the rest keep the order they turned
     // up in. Children are only moved when the order really changed: a property
     // update must not shuffle the cards under the pointer.
     _syncOrder() {
         const cards = [...this._cards.values()];
-        const wanted = this._options.sortPlayingFirst
-            ? [...cards].sort((a, b) => Number(b.playing) - Number(a.playing))
-            : cards;
+        const shown = new Set(this._shownCards());
+        const wanted = this._options.sortPlayingFirst ? this._ranked() : cards;
 
         // The placeholder is the first child and stays there.
         wanted.forEach((card, index) => {
+            card.visible = shown.has(card);
             if (this.get_child_at_index(index + 1) !== card)
                 this.set_child_at_index(card, index + 1);
         });
@@ -1364,7 +1487,7 @@ class CardStack extends St.BoxLayout {
     }
 
     _syncLayout() {
-        const cards = [...this._cards.values()];
+        const cards = this._shownCards();
         // Several players share the popup as an accordion: one card open, the
         // rest as one-line rows. A fixed size from the preferences is a fixed
         // size, and nothing expands.
@@ -2065,6 +2188,7 @@ class MediaModel {
         this.stack.setLayout(readSetting(this._settings, 'card-layout'));
         this.stack.setOptions(this._readOptions());
         this.equalizer.animate = readSetting(this._settings, 'animate-icon');
+        this.equalizer.iconStyle = readSetting(this._settings, 'equalizer-style');
         this.equalizer.playing = this.stack.anyPlaying;
         this.notifyVisibility?.();
     }
@@ -2079,6 +2203,8 @@ class MediaModel {
             sortPlayingFirst: readSetting(this._settings, 'sort-playing-first'),
             scrollText: readSetting(this._settings, 'scroll-text'),
             animate: readSetting(this._settings, 'animate-icon'),
+            equalizerStyle: readSetting(this._settings, 'equalizer-style'),
+            maxCards: readSetting(this._settings, 'max-cards'),
         };
     }
 
@@ -2445,6 +2571,8 @@ export default class NowPlayingExtension extends Extension {
             'changed::panel-index', () => this._rebuild(),
             'changed::indicator-visibility', () => this._host?._syncVisibility(),
             'changed::animate-icon', () => this._host?._model.sync(),
+            'changed::equalizer-style', () => this._host?._model.sync(),
+            'changed::max-cards', () => this._host?._model.sync(),
             'changed::card-layout', () => this._host?._model.sync(),
             'changed::cover-size', () => this._host?._model.sync(),
             'changed::show-progress', () => this._host?._model.sync(),

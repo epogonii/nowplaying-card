@@ -112,6 +112,16 @@ function accordion() {
             `[compact=${c._compact} expandable=${c._expandable} h=${c.get_height()}]`).join(' ');
 }
 
+function shellCpu() {
+    const [, bytes] = GLib.file_get_contents('/proc/self/stat');
+    const stat = new TextDecoder().decode(bytes);
+    // The process name can hold spaces and brackets, so the fields start after
+    // the last bracket: state first, then utime and stime twelve and thirteen
+    // fields along, in clock ticks of a hundredth of a second.
+    const fields = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
+    return (Number(fields[11]) + Number(fields[12])) / 100;
+}
+
 function panelButton() {
     return Main.panel.statusArea[UUID] ?? null;
 }
@@ -675,6 +685,55 @@ export default class ProbeQs extends Extension {
             log(`PROBE VIS active idle shouldShow=${host()?._model.shouldShow} ` +
                 `visible=${host()?.visible} (expect false, false)`);
         });
+
+        // What the animation costs, measured by the shell on itself: five
+        // seconds of drawing the bars against five seconds of standing still.
+        this._at(55, () => {
+            this._cpuMark = shellCpu();
+        });
+        this._at(60, () => {
+            this._cpuBusy = shellCpu() - this._cpuMark;
+            stateObj()?._settings.set_boolean('animate-icon', false);
+            this._cpuMark = shellCpu();
+        });
+        this._at(65, () => {
+            const still = shellCpu() - this._cpuMark;
+            stateObj()?._settings.set_boolean('animate-icon', true);
+            log(`PROBE CPU animated=${this._cpuBusy.toFixed(2)}s ` +
+                `still=${still.toFixed(2)}s over 5s each, ` +
+                `animation=${(((this._cpuBusy - still) / 5) * 100).toFixed(1)}% of a core`);
+        });
+
+        // Three ways to draw the bars. Each one gets a couple of seconds of
+        // painting to itself, so a repaint that throws lands in the log
+        // between two of these lines and not after the last of them.
+        const styleStep = (at, style, expect) => this._at(at, () => {
+            stateObj()?._settings.set_string('equalizer-style', style);
+            const eq = model()?.equalizer;
+            log(`PROBE STYLE ${style} icon=${eq?.iconStyle} ` +
+                `w=${eq?.get_width()} timeline=${eq?._timeline !== null} ` +
+                `(expect ${expect})`);
+        });
+        styleStep(70, 'rounded', 'rounded, 13, true');
+        styleStep(72, 'rainbow', 'rainbow, 13, true');
+        styleStep(74, 'bars', 'bars, 13, true');
+
+        // The popup only shows so many players at once, and the ones playing
+        // keep their places.
+        const capStep = (at, cap, expect) => this._at(at, () => {
+            stateObj()?._settings.set_int('max-cards', cap);
+            const shown = cards().filter(c => c.visible);
+            log(`PROBE CAP ${cap} cards=${cards().length} shown=${shown.length} ` +
+                `buses=${shown.map(c => c._player.busName.replace('org.mpris.MediaPlayer2.', '')).join(',')} ` +
+                `playingHidden=${cards().filter(c => !c.visible && c.playing).length} ` +
+                `expanded=${model()?.stack._expandedCard?._player.busName.replace('org.mpris.MediaPlayer2.', '') ?? 'none'} ` +
+                `(expect ${expect})`);
+        });
+        // Two of the three stubs play, so a cap of one has to leave one of
+        // them out: that is the cap doing its job, not the ranking failing.
+        capStep(76, 2, '2 shown, 0 playing hidden');
+        capStep(78, 1, '1 shown, 1 playing hidden, expanded none');
+        capStep(80, 3, '3 shown, 0 playing hidden');
 
         // Harness kills the stubs at t=90.
         this._at(96, () => {

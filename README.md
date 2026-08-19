@@ -24,9 +24,13 @@ player. Nothing to configure to get going, nothing to install beside it.
 - Click the cover to switch to the player's own window
 - Several players share one popup as an accordion; a row opened by hand stays
   open while its player is playing
+- Three cards at once by default, as many as ten if you want them; a player
+  that starts playing always gets one of the places
 - One popup width whatever the track is called, so nothing jumps between songs
 - Own panel button or embedded in Quick Settings, and the top-bar icon can be
   there always, only while a player runs, or never
+- Equalizer bars with square ends, rounded ends, or rounded ends in colours
+  that keep moving
 - Follows the system light and dark theme and switches with it
 - Hides GNOME's own media controls while it runs, and gives them straight back
   when it stops
@@ -71,11 +75,13 @@ Preferences apply immediately.
 | Controls in the panel | Previous, play and next next to the icon |
 | Middle click | Nothing, play or pause, or next track |
 | Card size | Accordion with several players, always full, or always compact |
+| Cards at once | How many players the popup shows, one to ten |
 | Cover size | Smallest artwork in a full card; it grows to the height of the card |
 | Show the progress bar | Position and length of the track |
 | Show the volume slider | For players that carry a volume of their own |
 | Show shuffle and repeat | For players that support them |
 | Scroll long text | Move a title sideways instead of cutting it off |
+| Icon style | Square ends, rounded ends, or rounded ends in moving colours |
 | Animate the icon | Move the equalizer bars during playback |
 | Show in the top bar | Always, only while a player is running, or never |
 | Playing player first | Keep the card that is playing at the top |

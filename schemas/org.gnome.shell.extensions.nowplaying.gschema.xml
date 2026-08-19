@@ -29,6 +29,11 @@
     <value value="1" nick="play-pause"/>
     <value value="2" nick="next"/>
   </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.equalizer-style">
+    <value value="0" nick="bars"/>
+    <value value="1" nick="rounded"/>
+    <value value="2" nick="rainbow"/>
+  </enum>
   <enum id="org.gnome.shell.extensions.nowplaying.indicator-visibility">
     <value value="0" nick="always"/>
     <value value="1" nick="active"/>
@@ -81,6 +86,17 @@
       <default>false</default>
       <summary>Show the controls in the panel</summary>
       <description>Put previous, play and next next to the icon, so a track can be changed without opening the card.</description>
+    </key>
+    <key name="max-cards" type="i">
+      <default>3</default>
+      <range min="1" max="10"/>
+      <summary>Cards at once</summary>
+      <description>How many players the popup shows. Anything above that stays out of it, and a player that starts playing takes one of the places.</description>
+    </key>
+    <key name="equalizer-style" enum="org.gnome.shell.extensions.nowplaying.equalizer-style">
+      <default>'bars'</default>
+      <summary>Icon style</summary>
+      <description>Shape and colour of the equalizer bars: square ends, rounded ends, or rounded ends that cycle through colours while a player is playing.</description>
     </key>
     <key name="animate-icon" type="b">
       <default>true</default>

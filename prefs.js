@@ -15,6 +15,7 @@ const PANEL_SCROLLS = ['none', 'track', 'volume'];
 const MIDDLE_CLICKS = ['none', 'play-pause', 'next'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
+const EQUALIZER_STYLES = ['bars', 'rounded', 'rainbow'];
 
 const SPONSORS_URL = 'https://github.com/sponsors/epogonii';
 const PAYPAL_URL = 'https://www.paypal.com/paypalme/pogonii';
@@ -136,6 +137,18 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         card.add(layoutRow);
 
+        const maxCardsRow = new Adw.SpinRow({
+            title: _('Cards at once'),
+            subtitle: _('Extra players wait their turn; what is playing always gets a card'),
+            adjustment: new Gtk.Adjustment({
+                lower: 1,
+                upper: 10,
+                step_increment: 1,
+                page_increment: 1,
+            }),
+        });
+        card.add(maxCardsRow);
+
         const coverRow = new Adw.ComboRow({
             title: _('Cover size'),
             subtitle: _('A minimum: the cover grows to the height of the card'),
@@ -168,6 +181,19 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             subtitle: _('Move a title sideways instead of cutting it off'),
         });
         card.add(scrollTextRow);
+
+        const iconStyleRow = new Adw.ComboRow({
+            title: _('Icon style'),
+            subtitle: _('Shape of the equalizer bars'),
+            model: new Gtk.StringList({
+                strings: [
+                    _('Square ends'),
+                    _('Rounded ends'),
+                    _('Rounded, cycling colours'),
+                ],
+            }),
+        });
+        card.add(iconStyleRow);
 
         const animateRow = new Adw.SwitchRow({
             title: _('Animate the icon'),
@@ -227,7 +253,9 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         this._bindEnum(settings, 'card-layout', CARD_LAYOUTS, layoutRow);
         this._bindEnum(settings, 'cover-size', COVER_SIZES, coverRow);
         this._bindEnum(settings, 'indicator-visibility', VISIBILITIES, visibilityRow);
+        this._bindEnum(settings, 'equalizer-style', EQUALIZER_STYLES, iconStyleRow);
         settings.bind('panel-index', indexRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('max-cards', maxCardsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-text-width', textWidthRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-progress', progressRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-volume', volumeRow, 'active', Gio.SettingsBindFlags.DEFAULT);
