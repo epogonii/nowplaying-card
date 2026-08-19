@@ -801,6 +801,42 @@ export default class ProbeQs extends Extension {
         capStep(78, 1, '1 shown, 1 playing hidden, expanded none');
         capStep(80, 3, '3 shown, 0 playing hidden');
 
+        // The panel button gets stretched past what it asked for whenever the
+        // bar is crowded, and the icon has to stay in the middle of the plate
+        // that is drawn around it. Forcing the width is the same thing the
+        // shell does when it runs out of room.
+        const gaps = tag => {
+            const btn = panelButton();
+            const eq = btn?._model?.equalizer;
+
+            if (!btn || !eq) {
+                log(`PROBE CENTER ${tag} no button`);
+                return;
+            }
+
+            const left = Math.round(eq.get_transformed_position()[0] -
+                btn.get_transformed_position()[0]);
+            const width = Math.round(btn.width);
+            const right = width - left - Math.round(eq.width);
+            log(`PROBE CENTER ${tag} btnW=${width} eqW=${Math.round(eq.width)} ` +
+                `left=${left} right=${right} (expect left=right)`);
+        };
+
+        // The stand runs in Quick Settings, so the button has to be asked for.
+        this._at(84.5, () => stateObj()?._settings.set_string('location', 'panel'));
+        this._at(85.5, () => {
+            gaps('natural');
+            const btn = panelButton();
+            const [, natural] = btn?.get_preferred_width(-1) ?? [0, 0];
+            btn?.set_width(Math.round(natural) + 40);
+        });
+        this._at(86.5, () => gaps('stretched'));
+        this._at(87, () => panelButton()?.set_width(-1));
+        this._at(87.5, () => {
+            gaps('released');
+            stateObj()?._settings.set_string('location', 'quick-settings');
+        });
+
         // Harness kills the stubs at t=90.
         this._at(96, () => {
             const m = model();

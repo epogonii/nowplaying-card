@@ -2460,9 +2460,23 @@ class NowPlayingButton extends PanelMenu.Button {
         });
         this._model.notifyVisibility = () => this._syncVisibility();
 
-        const box = new St.BoxLayout({style_class: 'np-panel-box'});
+        // A crowded panel hands the button less room than it asked for, and
+        // PanelMenu.ButtonBox answers that by dropping to the minimum padding
+        // and giving the whole rest of the box to its child. A box layout packs
+        // what it holds against its start, so the spare room piles up after the
+        // last child and the icon sits left of the plate drawn around it. The
+        // group is centred inside that room instead.
+        const box = new St.BoxLayout({
+            style_class: 'np-panel-box',
+            x_align: Clutter.ActorAlign.CENTER,
+        });
+        const center = new St.Widget({
+            layout_manager: new Clutter.BinLayout(),
+            x_expand: true,
+        });
+        center.add_child(box);
         box.add_child(this._model.equalizer);
-        this.add_child(box);
+        this.add_child(center);
 
         // The track can be read straight from the panel, cut to the width the
         // preferences allow and scrolled when it does not fit.
