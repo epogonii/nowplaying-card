@@ -269,3 +269,9 @@
     border-radius: 99px;
     padding: 1px;
 }
+
+/* The picture is a child of the tile rather than its background, so it carries
+   the same rounding to keep the corners of the cover from squaring off. */
+.np-cover-art {
+    border-radius: 8px;
+}

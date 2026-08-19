@@ -18,8 +18,9 @@ First release.
 - Three cards at once, up to ten by a setting; a player that starts playing
   takes one of the places.
 - The cover grows to the height of the card and carries the application icon
-  in its corner. Artwork keeps the proportions it came in, whether the player
-  points at a file, at a URL, or sends the picture inline; a track without any
-  falls back to the player's own icon on a plain tile.
+  in its corner. Artwork covers that square whatever shape it arrived in, and
+  is cropped rather than squeezed, whether the player points at a file, at a
+  URL, or sends the picture inline; a track without any falls back to the
+  player's own icon on a plain tile.
 - Sizes that are not styles follow the display scale factor.
 - Support links in the preferences: GitHub Sponsors and PayPal.
