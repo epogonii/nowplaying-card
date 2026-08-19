@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img alt="GNOME Shell 45 to 51" src="https://img.shields.io/badge/GNOME%20Shell-45%20to%2051-5c5cf5?logo=gnome&logoColor=white">
+  <img alt="GNOME Shell 45 to 50" src="https://img.shields.io/badge/GNOME%20Shell-45%20to%2050-5c5cf5?logo=gnome&logoColor=white">
   <img alt="License GPL-2.0-or-later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-8f33c7">
   <a href="https://github.com/sponsors/epogonii"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-GitHub-ea4aaa?logo=githubsponsors&logoColor=white"></a>
 </p>
@@ -91,7 +91,7 @@ Preferences:
 
 #### From extensions.gnome.org
 
-Not published yet.
+[extensions.gnome.org/extension/10736/now-playing-card](https://extensions.gnome.org/extension/10736/now-playing-card/)
 
 #### From a release
 

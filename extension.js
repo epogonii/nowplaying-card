@@ -244,6 +244,7 @@ class EqualizerIcon extends St.DrawingArea {
         this._animate = true;
         this._iconStyle = DEFAULTS['equalizer-style'];
         this._timeline = null;
+        this._frameId = 0;
         this._start = GLib.get_monotonic_time();
         this._painted = 0;
 
@@ -330,7 +331,8 @@ class EqualizerIcon extends St.DrawingArea {
                 duration: 1000,
                 repeat_count: -1,
             });
-            this._timeline.connect('new-frame', () => this._onFrame());
+            this._frameId = this._timeline.connect('new-frame',
+                () => this._onFrame());
             this._timeline.start();
         } else if (!wanted) {
             this._stopTimer();
@@ -427,7 +429,11 @@ class EqualizerIcon extends St.DrawingArea {
     }
 
     _stopTimer() {
-        this._timeline?.stop();
+        if (this._timeline) {
+            this._timeline.stop();
+            this._timeline.disconnect(this._frameId);
+            this._frameId = 0;
+        }
         this._timeline = null;
     }
 });
@@ -456,6 +462,7 @@ class ScrollingLabel extends St.Widget {
         this._overflow = 0;
         this._idleId = null;
         this._timeline = null;
+        this._frameId = 0;
         this._away = 0;
         this._walkText = null;
 
@@ -593,7 +600,8 @@ class ScrollingLabel extends St.Widget {
             duration,
             repeat_count: -1,
         });
-        this._timeline.connect('new-frame', () => this._onFrame());
+        this._frameId = this._timeline.connect('new-frame',
+            () => this._onFrame());
         this._timeline.start();
         if (carried > 0)
             this._timeline.advance(Math.min(carried, duration - 1));
@@ -633,7 +641,11 @@ class ScrollingLabel extends St.Widget {
     }
 
     _stopWalk() {
-        this._timeline?.stop();
+        if (this._timeline) {
+            this._timeline.stop();
+            this._timeline.disconnect(this._frameId);
+            this._frameId = 0;
+        }
         this._timeline = null;
         this._label.remove_all_transitions();
     }
@@ -778,13 +790,17 @@ const MediaCard = GObject.registerClass({
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._topRow.add_child(this._column);
-        this._column.connect('notify::height', () => this._syncCover());
+        this._column.connectObject('notify::height',
+            () => this._syncCover(), this);
         this.connect('notify::mapped', () => this._syncCover());
 
         // Both squares move the corner the badge rides on.
-        this._coverTile.connect('notify::width', () => this._placeBadge());
-        this._coverTile.connect('notify::height', () => this._placeBadge());
-        this._badge.connect('notify::width', () => this._placeBadge());
+        this._coverTile.connectObject(
+            'notify::width', () => this._placeBadge(),
+            'notify::height', () => this._placeBadge(),
+            this);
+        this._badge.connectObject('notify::width',
+            () => this._placeBadge(), this);
 
         this._headerRow = new St.BoxLayout({
             style_class: 'np-header-box',
@@ -2441,6 +2457,10 @@ class MediaModel {
         this._players.forEach(player => player.disconnectObject(this));
         this._players.clear();
         this._shown.clear();
+        this.stack?.destroy();
+        this.stack = null;
+        this.equalizer?.destroy();
+        this.equalizer = null;
         this.notifyVisibility = null;
     }
 }
@@ -2512,10 +2532,10 @@ class NowPlayingButton extends PanelMenu.Button {
         this.menu.box.add_style_class_name('np-menu');
         this.menu.box.add_child(this._model.stack);
 
-        this.menu.connect('open-state-changed', (_menu, open) => {
+        this.menu.connectObject('open-state-changed', (_menu, open) => {
             if (open)
                 this._model.stack.onMenuOpened();
-        });
+        }, this);
 
         this._syncVisibility();
     }
@@ -2737,8 +2757,10 @@ class NowPlayingIndicator extends QuickSettings.SystemIndicator {
     destroy() {
         this._quickSettings?.menu.disconnectObject(this);
         this._quickSettings = null;
+        // The card is the one quick settings item and the model owns it,
+        // so the list is dropped here and the model takes the actor down.
+        this.quickSettingsItems.length = 0;
         this._model.destroy();
-        this.quickSettingsItems.forEach(item => item.destroy());
         super.destroy();
     }
 });

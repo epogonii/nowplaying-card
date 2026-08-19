@@ -22,6 +22,10 @@ dbus-run-session -- bash -c '
   SD=$S/nested-home/data/gnome-shell/extensions/nowplaying@epogonii.github.io/schemas
   gsettings set org.gnome.shell enabled-extensions "[\"nowplaying@epogonii.github.io\",\"npprobe@test\"]"
   gsettings set org.gnome.shell disable-user-extensions false
+  # A shell that was asked to turn the extension off writes the uuid into
+  # disabled-extensions, and that list wins over the one above for every run
+  # after it. The stand starts from a clean pair.
+  gsettings set org.gnome.shell disabled-extensions "[]"
   gsettings --schemadir $SD reset-recursively org.gnome.shell.extensions.nowplaying
   gsettings --schemadir $SD set org.gnome.shell.extensions.nowplaying location quick-settings
   gnome-shell --wayland --no-x11 --headless --wayland-display=nptest --virtual-monitor $NP_MONITOR &
