@@ -16,6 +16,7 @@ const MIDDLE_CLICKS = ['none', 'play-pause', 'next'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
 
+const SPONSORS_URL = 'https://github.com/sponsors/epogonii';
 const PAYPAL_URL = 'https://www.paypal.com/paypalme/pogonii';
 const WALLETS = [
     ['Bitcoin', '18KtJEw8gt2oyicszwMUkbAKMHHXS9nwKR'],
@@ -265,15 +266,22 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         page.add(group);
 
-        const paypal = new Adw.ActionRow({
-            title: _('PayPal'),
-            subtitle: PAYPAL_URL,
-            activatable: true,
-        });
-        paypal.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
-        paypal.connect('activated', () =>
-            Gio.AppInfo.launch_default_for_uri(PAYPAL_URL, null));
-        group.add(paypal);
+        const links = [
+            [_('GitHub Sponsors'), _('Monthly or one time'), SPONSORS_URL],
+            [_('PayPal'), PAYPAL_URL, PAYPAL_URL],
+        ];
+
+        for (const [title, subtitle, url] of links) {
+            const row = new Adw.ActionRow({
+                title,
+                subtitle,
+                activatable: true,
+            });
+            row.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
+            row.connect('activated', () =>
+                Gio.AppInfo.launch_default_for_uri(url, null));
+            group.add(row);
+        }
 
         for (const [name, address] of WALLETS) {
             const row = new Adw.ActionRow({

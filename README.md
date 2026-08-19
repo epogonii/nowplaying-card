@@ -102,6 +102,7 @@ The extension is free and stays free. If it earned a coffee:
 
 | | |
 | --- | --- |
+| GitHub Sponsors | **[github.com/sponsors/epogonii](https://github.com/sponsors/epogonii)**, monthly or one time |
 | PayPal | **[paypal.me/pogonii](https://www.paypal.com/paypalme/pogonii)** |
 | Bitcoin | `18KtJEw8gt2oyicszwMUkbAKMHHXS9nwKR` |
 | Ethereum | `0x4f2fb6a154526a72d612afa2e3a8129e30ca0996` |
