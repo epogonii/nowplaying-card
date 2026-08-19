@@ -81,9 +81,20 @@ function order() {
         .join(',');
 }
 
+function geom(actor) {
+    if (!actor)
+        return 'none';
+    return `${Math.round(actor.x)},${Math.round(actor.y)},` +
+        `${Math.round(actor.width)},${Math.round(actor.height)}`;
+}
+
 function cardInfo(card) {
     return `bus=${card._player.busName.replace('org.mpris.MediaPlayer2.', '')} ` +
         `compact=${card._compact} cover=${card._cover.icon_size} ` +
+        `badgeBox=${geom(card._badge)} ` +
+        `badgeT=${Math.round(card._badge.translation_x)},${Math.round(card._badge.translation_y)} ` +
+        `coverBox=${geom(card._cover)} ` +
+        `binBox=${geom(card._badge.get_parent())} ` +
         `badge=${card._badge.visible} seek=${card._seekBox.visible} ` +
         `volumeBox=${card._volumeBox.visible} volume=${card._volumeSlider.value.toFixed(2)} ` +
         `shuffleBtn=${card._shuffleButton.visible} loopBtn=${card._loopButton.visible} ` +
@@ -366,6 +377,46 @@ export default class ProbeQs extends Extension {
             reopen();
             log(`PROBE REOPEN after quiet ${accordion()} ` +
                 `playing=${cards().map(c => c.playing).join(',')} (expect a playing one open)`);
+        });
+
+        // Raw coordinates while the popup is open: bin box, cover box inside
+        // the bin, badge box inside the bin.
+        const rawDump = () => cards().forEach(c => {
+            const bin = c._badge.get_parent();
+            log(`PROBE RAW bus=${c._player.busName.replace('org.mpris.MediaPlayer2.', '')} ` +
+                `compact=${c._compact} vis=${c._badge.visible} iconSize=${c._cover.icon_size} ` +
+                `bin=${geom(bin)} cover=${geom(c._cover)} badge=${geom(c._badge)} ` +
+                `btn=${geom(bin.get_parent())} ` +
+                `t=${Math.round(c._badge.translation_x)},${Math.round(c._badge.translation_y)} ` +
+                `coverAbs=${c._cover.get_transformed_position().map(Math.round).join(',')} ` +
+                `badgeAbs=${c._badge.get_transformed_position().map(Math.round).join(',')} ` +
+                `prefW=${c._cover.get_preferred_width(-1).map(Math.round).join('/')} ` +
+                `prefH=${c._cover.get_preferred_height(-1).map(Math.round).join('/')} ` +
+                `topRow=${geom(c._topRow)} column=${geom(c._column)} card=${geom(c)}`);
+        });
+
+        this._at(28.5, rawDump);
+
+        // Where the badge lands: the app icon has to ride the bottom right
+        // corner of the artwork, the way the card is meant to look.
+        this._at(82, () => {
+            const menu = Main.panel.statusArea.quickSettings.menu;
+            if (!menu.isOpen)
+                menu.open(false);
+        });
+
+        this._at(84, () => {
+            cards().forEach(c => {
+                const [cx, cy] = c._cover.get_transformed_position();
+                const [bx, by] = c._badge.get_transformed_position();
+                log(`PROBE BADGE bus=${c._player.busName.replace('org.mpris.MediaPlayer2.', '')} ` +
+                    `compact=${c._compact} visible=${c._badge.visible} ` +
+                    `cover=${Math.round(cx)},${Math.round(cy)},` +
+                    `${Math.round(c._cover.width)},${Math.round(c._cover.height)} ` +
+                    `badge=${Math.round(bx)},${Math.round(by)},` +
+                    `${Math.round(c._badge.width)},${Math.round(c._badge.height)} ` +
+                    `(expect the badge in the bottom right corner of the cover)`);
+            });
         });
 
         // Players the preferences leave out get no card.

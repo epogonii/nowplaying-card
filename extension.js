@@ -95,6 +95,8 @@ const PROPERTY_RETRY_MS = 1000;
 const PROPERTY_RETRIES = 10;
 const BADGE_SIZE = 14;
 const FULL_BADGE_SIZE = 18;
+// How far the badge stops short of the corner of the cover.
+const BADGE_INSET = 2;
 const VOLUME_ICON_SIZE = 16;
 const VOLUME_STEP = 0.05;
 const VOLUME_COALESCE_MS = 100;
@@ -549,12 +551,10 @@ const MediaCard = GObject.registerClass({
         });
 
         // Which player a row belongs to is not obvious from album art alone,
-        // so the app icon sits in its corner while the cards are stacked.
+        // so the app icon sits in the bottom right corner of the cover.
         this._badge = new St.Icon({
             style_class: 'np-cover-badge',
             icon_size: BADGE_SIZE,
-            x_align: Clutter.ActorAlign.END,
-            y_align: Clutter.ActorAlign.END,
             visible: false,
         });
 
@@ -582,6 +582,11 @@ const MediaCard = GObject.registerClass({
         this._topRow.add_child(this._column);
         this._column.connect('notify::height', () => this._syncCover());
         this.connect('notify::mapped', () => this._syncCover());
+
+        // Both squares move the corner the badge rides on.
+        this._cover.connect('notify::width', () => this._placeBadge());
+        this._cover.connect('notify::height', () => this._placeBadge());
+        this._badge.connect('notify::width', () => this._placeBadge());
 
         this._headerRow = new St.BoxLayout({
             style_class: 'np-header-box',
@@ -1007,6 +1012,23 @@ const MediaCard = GObject.registerClass({
         this._syncingCover = true;
         this._cover.icon_size = size;
         this._syncingCover = false;
+    }
+
+    // The app icon belongs in the bottom right corner of the artwork. The bin
+    // that stacks the two centers both of them, so the way out to the corner
+    // is half the difference between them, and the badge stops a step short of
+    // it to stay clear of the rounded corner.
+    _placeBadge() {
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
+
+        // What the cover draws, not what it asked for: a card too narrow for
+        // the size in the preferences, or artwork with fewer pixels than that,
+        // both leave a smaller square on screen.
+        const art = Math.min(this._cover.width, this._cover.height,
+            this._cover.icon_size * scale);
+        const offset = (art - this._badge.width) / 2 - BADGE_INSET * scale;
+        this._badge.translation_x = offset;
+        this._badge.translation_y = offset;
     }
 
     _metadataValue(key) {
