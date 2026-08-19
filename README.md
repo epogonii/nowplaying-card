@@ -1,7 +1,14 @@
-# Now Playing Card
+<p align="center">
+  <img src="docs/equalizer.gif" width="128" height="128" alt="Now Playing Card">
+</p>
 
-![GNOME Shell 45 to 50](https://img.shields.io/badge/GNOME%20Shell-45%20to%2050-4a86cf)
-![License GPL-2.0-or-later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)
+<h1 align="center">Now Playing Card</h1>
+
+<p align="center">
+  <img alt="GNOME Shell 45 to 50" src="https://img.shields.io/badge/GNOME%20Shell-45%20to%2050-4a86cf?logo=gnome&logoColor=white">
+  <img alt="License GPL-2.0-or-later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue">
+  <a href="https://github.com/sponsors/epogonii"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-GitHub-ea4aaa?logo=githubsponsors&logoColor=white"></a>
+</p>
 
 ## What does this extension do?
 
@@ -105,6 +112,11 @@ Include, please:
 ## Support
 
 The extension is free and stays free. If it earned a coffee:
+
+<p align="center">
+  <a href="https://github.com/sponsors/epogonii"><img alt="Sponsor on GitHub" src="https://img.shields.io/badge/%E2%9D%A4%20Sponsor%20on%20GitHub-ea4aaa?style=for-the-badge&logo=githubsponsors&logoColor=white"></a>
+  <a href="https://www.paypal.com/paypalme/pogonii"><img alt="Buy me a coffee" src="https://img.shields.io/badge/%E2%98%95%20Buy%20me%20a%20coffee-003087?style=for-the-badge&logo=paypal&logoColor=white"></a>
+</p>
 
 | | |
 | --- | --- |
