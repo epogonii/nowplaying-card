@@ -430,6 +430,32 @@ export default class ProbeQs extends Extension {
 
         // Order follows what is playing: the first stub pauses at t=66 and
         // starts again at t=86.
+        // The same at 200%, this time for the artwork and the app icon on it.
+        this._at(66, () => {
+            // Allocations stand still while the popup is closed, so the boxes
+            // have to be read with it open.
+            const menu = Main.panel.statusArea.quickSettings.menu;
+            if (!menu.isOpen)
+                menu.open(false);
+            St.ThemeContext.get_for_stage(global.stage).scale_factor = 2;
+        });
+
+        this._at(67, () => {
+            const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+            log(`PROBE FORCEDCARD factor=${scale} (expect 2)`);
+            cards().forEach(c => {
+                const art = Math.min(c._cover.width, c._cover.height,
+                    c._cover.icon_size * scale);
+                log(`PROBE FORCEDCARD ${cardInfo(c)} art=${Math.round(art)} ` +
+                    `inset=${Math.round((art - c._badge.width) / 2 - c._badge.translation_x)} ` +
+                    `(expect an inset of 4 at 200%)`);
+            });
+        });
+
+        this._at(68, () => {
+            St.ThemeContext.get_for_stage(global.stage).scale_factor = 1;
+        });
+
         this._at(69, () => log(`PROBE ORDER paused ${order()} ` +
             `(expect spotify last) status=${cards().map(c => c._player.status).join(',')}`));
         this._at(71, () => stateObj()?._settings.set_boolean('sort-playing-first', false));
@@ -512,6 +538,47 @@ export default class ProbeQs extends Extension {
             stateObj()?._settings.set_string('panel-middle-click', 'none');
             log(`PROBE MIDDLE off=${button?._middleClickAction()} (expect false)`);
             stateObj()?._settings.set_string('panel-middle-click', 'play-pause');
+        });
+
+        // Everything sized in stage pixels has to follow the scale factor, the
+        // way an icon size or a length from the stylesheet already does.
+        this._at(47, () => {
+            const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+            const button = panelButton();
+            const eq = button?._model.equalizer;
+            const label = button?._panelLabel;
+            log(`PROBE SCALE factor=${scale} ` +
+                `eq=${geom(eq)} eqPrefW=${eq?.get_preferred_width(-1).map(Math.round).join('/')} ` +
+                `(expect ${11 * scale}) ` +
+                `labelW=${Math.round(label?.get_width())} ` +
+                `labelPrefW=${label?.get_preferred_width(-1).map(Math.round).join('/')} ` +
+                `cap=${label?.maxWidth} (expect ${200 * scale}) ` +
+                `panelH=${Math.round(Main.panel.height)} (expect twice a 1x panel)`);
+        });
+
+        // Wayland scales the framebuffer, so the ui scale factor stays 1 there
+        // whatever the monitor does. An X11 session at 200% is the case where it
+        // does not, and moving the scale by hand is the only way to stand in for
+        // one here.
+        this._at(47.2, () => {
+            St.ThemeContext.get_for_stage(global.stage).scale_factor = 2;
+        });
+
+        this._at(47.5, () => {
+            const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+            const button = panelButton();
+            const eq = button?._model.equalizer;
+            const label = button?._panelLabel;
+            log(`PROBE FORCED factor=${scale} (expect 2) ` +
+                `eq=${geom(eq)} eqPrefW=${eq?.get_preferred_width(-1).map(Math.round).join('/')} ` +
+                `(expect 22) ` +
+                `labelPrefW=${label?.get_preferred_width(-1).map(Math.round).join('/')} ` +
+                `cap=${label?.maxWidth} (expect 400) ` +
+                `panelH=${Math.round(Main.panel.height)} (expect twice the 1x panel)`);
+        });
+
+        this._at(47.8, () => {
+            St.ThemeContext.get_for_stage(global.stage).scale_factor = 1;
         });
 
         this._at(46, () => {

@@ -162,9 +162,17 @@ function readSetting(settings, key) {
     }
 }
 
+// A length from the stylesheet and an icon size both grow with the scale factor
+// of the session. A size handed straight to an actor does not: it is in stage
+// pixels and stays where it was written unless it is scaled here.
+function scaleFactor() {
+    return St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
+}
+
 const N_BARS = 3;
 const BAR_WIDTH = 3;
 const BAR_GAP = 2;
+const EQUALIZER_WIDTH = N_BARS * BAR_WIDTH + (N_BARS - 1) * BAR_GAP;
 const FRAME_MS = 80;
 const SPEEDS = [7.1, 9.7, 5.3];
 const PHASES = [0, 2.1, 4.2];
@@ -178,7 +186,6 @@ class EqualizerIcon extends St.DrawingArea {
         super._init({
             style_class: 'np-equalizer',
             y_align: Clutter.ActorAlign.CENTER,
-            width: N_BARS * BAR_WIDTH + (N_BARS - 1) * BAR_GAP,
         });
 
         this._playing = false;
@@ -186,8 +193,12 @@ class EqualizerIcon extends St.DrawingArea {
         this._timerId = null;
         this._frame = 0;
 
-        // A new system theme means a new foreground colour: redraw with it.
-        this.connect('style-changed', () => this.queue_repaint());
+        // A new system theme means a new foreground colour: redraw with it. A
+        // new scale factor arrives the same way, and that one changes the width.
+        this.connect('style-changed', () => {
+            this.queue_relayout();
+            this.queue_repaint();
+        });
         this.connect('destroy', () => this._stopTimer());
     }
 
@@ -217,6 +228,18 @@ class EqualizerIcon extends St.DrawingArea {
         return this._animate;
     }
 
+    // The height comes from the stylesheet and doubles in a 200% session, so
+    // the width has to as well: an actor size is in stage pixels and follows
+    // nothing on its own.
+    vfunc_get_preferred_width(_forHeight) {
+        const width = EQUALIZER_WIDTH * scaleFactor();
+
+        if (!this.get_stage())
+            return [width, width];
+
+        return this.get_theme_node().adjust_preferred_width(width, width);
+    }
+
     _updateTimer() {
         const wanted = this._playing && this._animate && this.mapped;
 
@@ -241,6 +264,9 @@ class EqualizerIcon extends St.DrawingArea {
             color.red / 255, color.green / 255, color.blue / 255,
             color.alpha / 255);
 
+        const scale = scaleFactor();
+        const barWidth = BAR_WIDTH * scale;
+        const gap = BAR_GAP * scale;
         const t = this._frame * (FRAME_MS / 1000);
         const minHeight = Math.round(height * 0.25);
         const maxHeight = Math.round(height * 0.85);
@@ -251,10 +277,10 @@ class EqualizerIcon extends St.DrawingArea {
                 ? (Math.sin(t * SPEEDS[i] + PHASES[i]) + 1) / 2
                 : STATIC_HEIGHTS[i];
             const barHeight = minHeight + (maxHeight - minHeight) * wave;
-            const x = i * (BAR_WIDTH + BAR_GAP);
+            const x = i * (barWidth + gap);
             const y = (height + barHeight) / 2;
 
-            cr.rectangle(x, y - barHeight, BAR_WIDTH, barHeight);
+            cr.rectangle(x, y - barHeight, barWidth, barHeight);
         }
 
         cr.fill();
@@ -330,8 +356,10 @@ class ScrollingLabel extends St.Widget {
         return this._scroll;
     }
 
-    // Zero lets the parent decide the width, anything else is a ceiling in
-    // pixels for a label that has no parent to hold it back.
+    // Zero lets the parent decide the width, anything else is a ceiling for a
+    // label that has no parent to hold it back. The number comes from the
+    // preferences, so it is a length like the stylesheet's and the scale factor
+    // applies to it where it is used.
     set maxWidth(maxWidth) {
         if (this._maxWidth === maxWidth)
             return;
@@ -364,8 +392,8 @@ class ScrollingLabel extends St.Widget {
         const [min, natural] = super.vfunc_get_preferred_width(forHeight);
 
         if (this._maxWidth > 0) {
-            const width = this._pin
-                ? this._maxWidth : Math.min(natural, this._maxWidth);
+            const cap = this._maxWidth * scaleFactor();
+            const width = this._pin ? cap : Math.min(natural, cap);
             return [width, width];
         }
 
@@ -448,7 +476,7 @@ class ScrollingLabel extends St.Widget {
     _scrollAway() {
         this._ease({
             translation_x: -this._overflow,
-            duration: (this._overflow / TEXT_SCROLL_SPEED) * 1000,
+            duration: (this._overflow / (TEXT_SCROLL_SPEED * scaleFactor())) * 1000,
             delay: TEXT_SCROLL_PAUSE_MS,
             mode: Clutter.AnimationMode.LINEAR,
         }, () => this._scrollBack());
@@ -482,7 +510,7 @@ function animatePress(button, nudge) {
     icon.remove_all_transitions();
     icon.set_pivot_point(0.5, 0.5);
     icon.set_scale(PRESS_SCALE, PRESS_SCALE);
-    icon.translation_x = nudge;
+    icon.translation_x = nudge * scaleFactor();
     icon.ease({
         scale_x: 1,
         scale_y: 1,
@@ -828,6 +856,7 @@ const MediaCard = GObject.registerClass({
             this._lengthUs > 0;
         // The badge says which player a card belongs to, folded or not.
         this._badge.icon_size = compact ? BADGE_SIZE : FULL_BADGE_SIZE;
+        this._placeBadge();
         this._badge.visible = this._hasArtwork && !!this._badge.gicon;
     }
 
@@ -991,11 +1020,11 @@ const MediaCard = GObject.registerClass({
         if (!this._options || this._syncingCover)
             return;
 
-        // Actor sizes are physical pixels, an icon size is not.
-        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
+        const scale = scaleFactor();
 
         if (this._compact) {
             this._cover.icon_size = COMPACT_COVER_SIZE;
+            this._placeBadge();
             return;
         }
 
@@ -1012,6 +1041,7 @@ const MediaCard = GObject.registerClass({
         this._syncingCover = true;
         this._cover.icon_size = size;
         this._syncingCover = false;
+        this._placeBadge();
     }
 
     // The app icon belongs in the bottom right corner of the artwork. The bin
@@ -1019,7 +1049,13 @@ const MediaCard = GObject.registerClass({
     // is half the difference between them, and the badge stops a step short of
     // it to stay clear of the rounded corner.
     _placeBadge() {
-        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
+        // Reading a size walks the style tree, and a card that has not reached
+        // the stage yet has none. The map and the sizes that come with it bring
+        // us back here.
+        if (!this.get_stage())
+            return;
+
+        const scale = scaleFactor();
 
         // What the cover draws, not what it asked for: a card too narrow for
         // the size in the preferences, or artwork with fewer pixels than that,

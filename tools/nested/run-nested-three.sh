@@ -5,6 +5,10 @@ export XDG_DATA_HOME="$S/nested-home/data"
 export XDG_CACHE_HOME="$S/nested-home/cache"
 export G_MESSAGES_DEBUG=all
 SRC="$(dirname "$(dirname "$S")")"
+# NP_SCALE=2 runs the session at 200% on a monitor twice as wide, so the shell
+# has the same room in logical pixels as an unscaled run.
+export NP_SCALE="${NP_SCALE:-1}"
+export NP_MONITOR=$(python3 -c "s=float('$NP_SCALE');print(f'{round(1280*s)}x{round(720*s)}')")
 EXT="$S/nested-home/data/gnome-shell/extensions/nowplaying@epogonii.github.io"
 python3 "$SRC"/tools/gen-stylesheets.py
 mkdir -p "$EXT"/schemas
@@ -20,9 +24,15 @@ dbus-run-session -- bash -c '
   gsettings set org.gnome.shell disable-user-extensions false
   gsettings --schemadir $SD reset-recursively org.gnome.shell.extensions.nowplaying
   gsettings --schemadir $SD set org.gnome.shell.extensions.nowplaying location quick-settings
-  gnome-shell --wayland --no-x11 --headless --wayland-display=nptest --virtual-monitor 1280x720 &
+  gnome-shell --wayland --no-x11 --headless --wayland-display=nptest --virtual-monitor $NP_MONITOR &
   SHELL_PID=$!
   sleep 6
+  # A scaled run leaves the same 1280x720 of room in logical pixels, so every
+  # expectation about the layout still holds and only the scale factor moves.
+  if [ "$NP_SCALE" != 1 ]; then
+    gjs $S/set-scale.js $NP_SCALE || echo "HARNESS scale failed"
+    sleep 3
+  fi
   # flatpak-style: names a .desktop file, so the app icon can badge the cover
   gjs $S/mprisstub5.js spotify spotify Spotify yes yes \
       "Scott Street From The Album Stranger In The Alps Deluxe Edition" \
