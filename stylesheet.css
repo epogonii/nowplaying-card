@@ -1,0 +1,237 @@
+.np-equalizer {
+    margin-left: 4px;
+    margin-right: 4px;
+    height: 16px;
+}
+
+.np-stack {
+    spacing: 6px;
+}
+
+.np-card {
+    /* Two quick-settings columns (12em each) plus the grid gap; keeps a long
+       track title from widening the whole Quick Settings menu. */
+    max-width: 25em;
+    background-color: rgba(127, 127, 127, 0.12); /* np-var: fill */
+    border-radius: 18px;
+    padding: 12px;
+    spacing: 10px;
+    border: none;
+    box-shadow: none;
+}
+
+.np-header {
+    border-radius: 12px;
+    border: none;
+    box-shadow: none;
+    background: none;
+    padding: 0;
+}
+
+.np-header:hover .np-title, .np-header:focus .np-title {
+    text-decoration: underline;
+}
+
+.np-header-box {
+    spacing: 14px;
+}
+
+.np-cover {
+    border-radius: 8px;
+}
+
+.np-labels {
+    spacing: 2px;
+}
+
+.np-title {
+    font-weight: bold;
+}
+
+.np-subtitle {
+    opacity: 0.7;
+    font-size: 0.9em;
+}
+
+.np-seek-box {
+    spacing: 2px;
+}
+
+/* Thin, handle-less bar so it reads as a progress line, not a volume slider. */
+.np-seek {
+    height: 14px;
+    min-width: 8em;
+    -barlevel-height: 4px;
+    -slider-handle-radius: 0;
+}
+
+.np-seek:hover, .np-seek:focus {
+    -barlevel-height: 6px;
+}
+
+.np-times {
+    padding: 0 2px;
+}
+
+.np-time {
+    font-size: 0.8em;
+    min-width: 2.6em;
+    opacity: 0.6;
+}
+
+.np-controls {
+    spacing: 14px;
+}
+
+.np-control {
+    border-radius: 99px;
+    border: none;
+    box-shadow: none;
+    padding: 6px;
+}
+
+.np-control:hover, .np-control:focus {
+    background-color: rgba(127, 127, 127, 0.25); /* np-var: hover */
+}
+
+.np-control:insensitive {
+    opacity: 0.4;
+}
+
+/* A stack of several players: any row can be clicked open, so it answers the
+   pointer and the keyboard focus. */
+.np-card-expandable:hover, .np-card-expandable:focus {
+    background-color: rgba(127, 127, 127, 0.2); /* np-var: hover */
+}
+
+/* Compact cards: everything on two tight rows, no time labels. */
+.np-card-compact {
+    padding: 8px 10px;
+    spacing: 4px;
+}
+
+.np-card-compact .np-header-box {
+    spacing: 10px;
+}
+
+.np-card-compact .np-controls {
+    spacing: 2px;
+}
+
+.np-card-compact .np-control {
+    padding: 4px;
+}
+
+.np-card-compact .np-seek {
+    height: 8px;
+    -barlevel-height: 3px;
+}
+
+.np-card-compact .np-seek:hover, .np-card-compact .np-seek:focus {
+    -barlevel-height: 5px;
+}
+
+.np-top-row {
+    spacing: 8px;
+}
+
+/* Own popup: the card carries all the padding, so the menu adds none. */
+.np-menu {
+    padding: 6px;
+    spacing: 6px;
+}
+
+/* One width whatever the track: a popup that followed its own text would
+   change size on every song. In Quick Settings the grid sets the width. */
+.np-menu .np-card {
+    min-width: 23em;
+    max-width: 23em;
+}
+
+.np-placeholder {
+    padding: 10px 14px;
+    opacity: 0.6;
+}
+
+/* Only the cover switches to the player, so only the cover reacts. */
+.np-cover-button {
+    border-radius: 8px;
+    border: none;
+    box-shadow: none;
+    background: none;
+    padding: 0;
+}
+
+.np-cover-button:hover .np-cover, .np-cover-button:focus .np-cover {
+    box-shadow: inset 0 0 0 2px rgba(127, 127, 127, 0.5); /* np-var: ring */
+}
+
+/* Text that walks sideways when it does not fit. The floor keeps a card from
+   collapsing around a short title, since the text itself asks for no width. */
+.np-scroll {
+    min-width: 11em;
+}
+
+.np-card-compact .np-scroll {
+    min-width: 8em;
+}
+
+/* Reads as a level meter beside the text, not as something to click. */
+.np-card-equalizer {
+    opacity: 0.45;
+    height: 14px;
+    margin: 0;
+}
+
+.np-volume-box {
+    spacing: 8px;
+    padding: 0 2px;
+}
+
+.np-volume-icon {
+    opacity: 0.7;
+}
+
+/* Thicker than the seek bar, and with a handle: this one is a control. */
+.np-volume {
+    height: 16px;
+    min-width: 6em;
+    -barlevel-height: 4px;
+    -slider-handle-radius: 5px;
+}
+
+/* A toggle that is off keeps its place but steps back. */
+.np-control-off {
+    opacity: 0.45;
+}
+
+.np-panel-box {
+    spacing: 4px;
+}
+
+/* Transport in the panel: flat, marked only under the pointer. */
+.np-panel-controls {
+    spacing: 2px;
+}
+
+.np-panel-control {
+    border-radius: 99px;
+    border: none;
+    box-shadow: none;
+    padding: 0 3px;
+}
+
+.np-panel-control:hover, .np-panel-control:focus {
+    background-color: rgba(127, 127, 127, 0.25); /* np-var: hover */
+}
+
+.np-panel-label {
+    padding-right: 2px;
+}
+
+/* The player's own icon, in the corner of the album art. */
+.np-cover-badge {
+    background-color: rgba(0, 0, 0, 0.45);
+    border-radius: 99px;
+    padding: 1px;
+}

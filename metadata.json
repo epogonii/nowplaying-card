@@ -1,0 +1,16 @@
+{
+  "uuid": "nowplaying@epogonii.github.io",
+  "name": "Now Playing Card",
+  "description": "Animated Now Playing indicator with a compact media card: cover art, a seekable progress bar and transport controls for any MPRIS player.",
+  "shell-version": [
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
+  ],
+  "version-name": "0.1",
+  "url": "https://github.com/epogonii/nowplaying-card",
+  "settings-schema": "org.gnome.shell.extensions.nowplaying"
+}

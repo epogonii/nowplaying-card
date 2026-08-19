@@ -1,0 +1,18 @@
+# Compiled by glib-compile-schemas, and built again at install time.
+schemas/gschemas.compiled
+
+# Built by gnome-extensions pack.
+*.shell-extension.zip
+
+# The nested shell writes a home of its own; only the fixtures are kept.
+tools/nested/nested-home/cache/
+tools/nested/nested-home/config/
+tools/nested/nested-home/data/*
+!tools/nested/nested-home/data/applications/
+tools/nested/nested-home/data/applications/*
+!tools/nested/nested-home/data/applications/spotify.desktop
+!tools/nested/nested-home/data/gnome-shell/
+tools/nested/nested-home/data/gnome-shell/*
+!tools/nested/nested-home/data/gnome-shell/extensions/
+tools/nested/nested-home/data/gnome-shell/extensions/*
+!tools/nested/nested-home/data/gnome-shell/extensions/npprobe@test/

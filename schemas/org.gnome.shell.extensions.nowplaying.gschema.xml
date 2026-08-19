@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <enum id="org.gnome.shell.extensions.nowplaying.location">
+    <value value="0" nick="panel"/>
+    <value value="1" nick="quick-settings"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.panel-box">
+    <value value="0" nick="left"/>
+    <value value="1" nick="center"/>
+    <value value="2" nick="right"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.card-layout">
+    <value value="0" nick="auto"/>
+    <value value="1" nick="full"/>
+    <value value="2" nick="compact"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.cover-size">
+    <value value="0" nick="small"/>
+    <value value="1" nick="medium"/>
+    <value value="2" nick="large"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.panel-scroll">
+    <value value="0" nick="none"/>
+    <value value="1" nick="track"/>
+    <value value="2" nick="volume"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.panel-middle-click">
+    <value value="0" nick="none"/>
+    <value value="1" nick="play-pause"/>
+    <value value="2" nick="next"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.panel-text">
+    <value value="0" nick="none"/>
+    <value value="1" nick="title"/>
+    <value value="2" nick="artist-title"/>
+  </enum>
+  <schema id="org.gnome.shell.extensions.nowplaying"
+          path="/org/gnome/shell/extensions/nowplaying/">
+    <key name="location" enum="org.gnome.shell.extensions.nowplaying.location">
+      <default>'panel'</default>
+      <summary>Where the card lives</summary>
+      <description>Show a dedicated panel button with its own popup, or embed the card in the Quick Settings menu.</description>
+    </key>
+    <key name="panel-box" enum="org.gnome.shell.extensions.nowplaying.panel-box">
+      <default>'right'</default>
+      <summary>Panel area</summary>
+      <description>Which part of the top panel holds the button.</description>
+    </key>
+    <key name="panel-index" type="i">
+      <default>0</default>
+      <range min="0" max="20"/>
+      <summary>Position in the panel area</summary>
+      <description>Order of the button within the chosen panel area.</description>
+    </key>
+    <key name="hide-when-idle" type="b">
+      <default>true</default>
+      <summary>Hide when no player is running</summary>
+    </key>
+    <key name="hide-builtin-media" type="b">
+      <default>true</default>
+      <summary>Hide the built-in media controls</summary>
+      <description>Remove GNOME's own media player entry from the notification list so the card is not shown twice. Restored as soon as the extension is turned off.</description>
+    </key>
+    <key name="card-layout" enum="org.gnome.shell.extensions.nowplaying.card-layout">
+      <default>'auto'</default>
+      <summary>Card size</summary>
+      <description>With several players one card is open and the rest are single rows, or always full cards, or always compact ones.</description>
+    </key>
+    <key name="panel-text-fixed" type="b">
+      <default>false</default>
+      <summary>Fixed text width</summary>
+      <description>Keep the full width even for a short track, so nothing next to the text moves between songs.</description>
+    </key>
+    <key name="panel-controls" type="b">
+      <default>false</default>
+      <summary>Show the controls in the panel</summary>
+      <description>Put previous, play and next next to the icon, so a track can be changed without opening the card.</description>
+    </key>
+    <key name="animate-buttons" type="b">
+      <default>true</default>
+      <summary>Animate button presses</summary>
+      <description>Dip the icon of a control when it is pressed.</description>
+    </key>
+    <key name="animate-icon" type="b">
+      <default>true</default>
+      <summary>Animate the equalizer icon</summary>
+    </key>
+    <key name="cover-size" enum="org.gnome.shell.extensions.nowplaying.cover-size">
+      <default>'medium'</default>
+      <summary>Cover size</summary>
+      <description>How large the album art is drawn in a full-size card.</description>
+    </key>
+    <key name="show-progress" type="b">
+      <default>true</default>
+      <summary>Show the progress bar</summary>
+    </key>
+    <key name="show-volume" type="b">
+      <default>true</default>
+      <summary>Show the volume slider</summary>
+      <description>Only shown for players that report a volume of their own.</description>
+    </key>
+    <key name="show-loop-shuffle" type="b">
+      <default>true</default>
+      <summary>Show the shuffle and repeat buttons</summary>
+      <description>Only shown for players that support them.</description>
+    </key>
+    <key name="sort-playing-first" type="b">
+      <default>true</default>
+      <summary>Put the playing player first</summary>
+    </key>
+    <key name="raise-on-click" type="b">
+      <default>true</default>
+      <summary>Switch to the player when the cover is clicked</summary>
+    </key>
+    <key name="scroll-text" type="b">
+      <default>true</default>
+      <summary>Scroll text that does not fit</summary>
+      <description>Move a long title sideways instead of cutting it off.</description>
+    </key>
+    <key name="panel-scroll" enum="org.gnome.shell.extensions.nowplaying.panel-scroll">
+      <default>'track'</default>
+      <summary>Scrolling over the panel button</summary>
+      <description>What the mouse wheel does over the button: nothing, switch tracks, or change the player volume.</description>
+    </key>
+    <key name="panel-middle-click" enum="org.gnome.shell.extensions.nowplaying.panel-middle-click">
+      <default>'play-pause'</default>
+      <summary>Middle click on the panel button</summary>
+    </key>
+    <key name="panel-text" enum="org.gnome.shell.extensions.nowplaying.panel-text">
+      <default>'none'</default>
+      <summary>Track shown in the panel</summary>
+      <description>Show the title, the artist and the title, or nothing but the icon.</description>
+    </key>
+    <key name="panel-text-width" type="i">
+      <default>180</default>
+      <range min="60" max="600"/>
+      <summary>Width of the panel text</summary>
+      <description>Longest the panel text may get, in pixels. Anything beyond it scrolls.</description>
+    </key>
+    <key name="ignored-players" type="as">
+      <default>[]</default>
+      <summary>Players to leave out</summary>
+      <description>Names of players that get no card, matched against the app id, the bus name and the name the player reports.</description>
+    </key>
+  </schema>
+</schemalist>

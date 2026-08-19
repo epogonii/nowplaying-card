@@ -1,0 +1,7 @@
+{
+  "uuid": "npprobe@test",
+  "name": "NP Probe",
+  "description": "Test harness: inspects the Now Playing button and its popup.",
+  "shell-version": ["50"],
+  "version-name": "0.1"
+}
