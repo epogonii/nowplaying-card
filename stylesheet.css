@@ -171,8 +171,10 @@
 }
 
 /* Text that walks sideways when it does not fit. The floor keeps a card from
-   collapsing around a short title, since the text itself asks for no width. */
-.np-scroll {
+   collapsing around a short title, since the text itself asks for no width.
+   In the top bar there is nothing to hold open, so no floor there: a short
+   title would only leave a gap between itself and the transport buttons. */
+.np-card .np-scroll {
     min-width: 11em;
 }
 
