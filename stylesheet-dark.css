@@ -105,7 +105,10 @@
     padding: 4px;
 }
 
-.np-control:hover, .np-control:focus {
+/* Nothing appears under the pointer: a transport button answers by moving
+   when it is pressed, and a plate behind the icon only crowds the card.
+   Keyboard focus keeps one, since it has no other way to be seen. */
+.np-control:focus {
     background-color: rgba(255, 255, 255, 0.14); /* np-var: hover */
 }
 
@@ -258,7 +261,7 @@
     padding: 0 2px;
 }
 
-.np-panel-control:hover, .np-panel-control:focus {
+.np-panel-control:focus {
     background-color: rgba(255, 255, 255, 0.14); /* np-var: hover */
 }
 
