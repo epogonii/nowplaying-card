@@ -1,5 +1,8 @@
-# Puts a Sponsor button on the repo page. GitHub allows up to four custom
-# links; the second one points at the README, where the crypto addresses are.
+# Puts a Sponsor button on the repo page. The GitHub entry opens their own
+# form, monthly or one-off; the custom links sit under it. GitHub allows up
+# to four custom ones, and the second here points at the README, where the
+# crypto addresses are.
+github: epogonii
 custom:
   - "https://www.paypal.com/paypalme/pogonii"
   - "https://github.com/epogonii/nowplaying-card#support"
