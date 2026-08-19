@@ -258,7 +258,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
     _addSupportGroup(page) {
         const group = new Adw.PreferencesGroup({
             title: _('Support'),
-            description: _('The extension is free and stays free. If it earned a coffee:'),
+            description: _('The extension is free and stays free. If it earned a coffee ☕'),
         });
         page.add(group);
 
