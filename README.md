@@ -20,6 +20,39 @@ Shows what is playing: an animated equalizer in the top panel and a media card
 with cover art, a seekable progress bar and transport controls for any MPRIS
 player. Nothing to configure to get going, nothing to install beside it.
 
+## Screenshots
+
+The card in its own popup, opened from the panel button:
+
+<p align="center">
+  <img src="docs/screenshots/card.png" width="700" alt="A card with cover art, transport controls and a progress bar">
+</p>
+
+Several players at once: the one playing keeps the open card, the rest wait as
+rows and open on a click.
+
+<p align="center">
+  <img src="docs/screenshots/stack.png" width="560" alt="Three players stacked, one card open and two rows">
+</p>
+
+The track and the transport in the panel itself:
+
+<p align="center">
+  <img src="docs/screenshots/panel.png" width="640" alt="The panel showing the equalizer, the track and transport buttons">
+</p>
+
+Or no button of its own, and the card at the bottom of Quick Settings:
+
+<p align="center">
+  <img src="docs/screenshots/quick-settings.png" width="520" alt="The card at the bottom of the Quick Settings menu">
+</p>
+
+Preferences:
+
+<p align="center">
+  <img src="docs/screenshots/preferences.png" width="560" alt="The preferences window on the Card page">
+</p>
+
 ## Features
 
 - Every MPRIS player, however it is packaged: native, Flatpak, Snap
@@ -90,27 +123,41 @@ Preferences apply immediately.
 
 `gnome-extensions prefs nowplaying@epogonii.github.io`
 
+Three pages, in the order the window shows them.
+
+### Card
+
+| Setting | Meaning |
+| --- | --- |
+| Card size | Accordion with several players, always full, or always compact |
+| Cards at once | How many players the popup shows, one to ten |
+| Playing player first | Keep the card that is playing at the top |
+| Cover size | Smallest artwork in a full card; it grows to the height of the card |
+| Show the progress bar | Position and length of the track |
+| Show the volume slider | For players that carry a volume of their own |
+| Show shuffle and repeat | For players that support them |
+| Scroll long text | Move a title sideways instead of cutting it off |
+| Icon style | Square ends, rounded ends, or cycling colours |
+| Animate the icon | Move the equalizer bars during playback |
+
+### Panel
+
 | Setting | Meaning |
 | --- | --- |
 | Location | Own panel button, or embedded in Quick Settings |
 | Panel area / Position | Where the button sits, panel mode only |
+| Show in the top bar | Always, only while a player is running, or never |
 | Track in the panel | Nothing, title, or artist and title next to the icon |
 | Text width | Longest the panel text may get, in pixels |
 | Fixed text width | Keep that width even for a short track |
 | Scrolling over the button | Nothing, switch tracks, or change volume |
 | Controls in the panel | Previous, play and next next to the icon |
 | Middle click | Nothing, play or pause, or next track |
-| Card size | Accordion with several players, always full, or always compact |
-| Cards at once | How many players the popup shows, one to ten |
-| Cover size | Smallest artwork in a full card; it grows to the height of the card |
-| Show the progress bar | Position and length of the track |
-| Show the volume slider | For players that carry a volume of their own |
-| Show shuffle and repeat | For players that support them |
-| Scroll long text | Move a title sideways instead of cutting it off |
-| Icon style | Square ends, rounded ends, or rounded ends in moving colours |
-| Animate the icon | Move the equalizer bars during playback |
-| Show in the top bar | Always, only while a player is running, or never |
-| Playing player first | Keep the card that is playing at the top |
+
+### Players
+
+| Setting | Meaning |
+| --- | --- |
 | Hide the built-in media controls | Keep GNOME's own player out of the notification list |
 | Ignored players | Picked from the installed apps, or typed by hand |
 
