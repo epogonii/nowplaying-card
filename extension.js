@@ -92,6 +92,7 @@ const SEEK_COALESCE_MS = 200;
 const PROPERTY_RETRY_MS = 1000;
 const PROPERTY_RETRIES = 10;
 const BADGE_SIZE = 14;
+const FULL_BADGE_SIZE = 18;
 const VOLUME_ICON_SIZE = 16;
 const VOLUME_STEP = 0.05;
 const VOLUME_COALESCE_MS = 100;
@@ -99,9 +100,9 @@ const VOLUME_GUARD_MS = 800;
 
 // The cover sizes the preferences offer, in pixels.
 const COVER_SIZES = {
-    'small': 36,
-    'medium': 48,
-    'large': 64,
+    'small': 56,
+    'medium': 72,
+    'large': 96,
 };
 
 // What LoopStatus cycles through when the repeat button is clicked.
@@ -537,16 +538,11 @@ const MediaCard = GObject.registerClass({
         this._compactApplied = false;
         this._options = CARD_OPTIONS;
 
-        // The header and the controls share a row in the compact layout, so the
-        // header cannot be a direct child of the card.
+        // Cover on the left, everything else stacked beside it. Expanded, that
+        // column carries the text, the controls and the seek bar; folded, it
+        // holds a single row.
         this._topRow = new St.BoxLayout({style_class: 'np-top-row', x_expand: true});
         this.add_child(this._topRow);
-
-        const headerBox = new St.BoxLayout({
-            style_class: 'np-header-box',
-            x_expand: true,
-        });
-        this._topRow.add_child(headerBox);
 
         this._cover = new St.Icon({
             style_class: 'np-cover',
@@ -576,7 +572,21 @@ const MediaCard = GObject.registerClass({
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._coverButton.connect('clicked', () => this._raise());
-        headerBox.add_child(this._coverButton);
+        this._topRow.add_child(this._coverButton);
+
+        this._column = new St.BoxLayout({
+            style_class: 'np-column',
+            ...VERTICAL,
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._topRow.add_child(this._column);
+
+        this._headerRow = new St.BoxLayout({
+            style_class: 'np-header-box',
+            x_expand: true,
+        });
+        this._column.add_child(this._headerRow);
 
         const labels = new St.BoxLayout({
             style_class: 'np-labels',
@@ -584,7 +594,7 @@ const MediaCard = GObject.registerClass({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        headerBox.add_child(labels);
+        this._headerRow.add_child(labels);
 
         this._title = new ScrollingLabel('np-title');
         labels.add_child(this._title);
@@ -597,14 +607,15 @@ const MediaCard = GObject.registerClass({
         this._equalizer = new EqualizerIcon();
         this._equalizer.add_style_class_name('np-card-equalizer');
         this._equalizer.x_align = Clutter.ActorAlign.END;
-        headerBox.add_child(this._equalizer);
+        this._equalizer.y_align = Clutter.ActorAlign.START;
+        this._headerRow.add_child(this._equalizer);
 
         this._seekBox = new St.BoxLayout({
             style_class: 'np-seek-box',
             ...VERTICAL,
             x_expand: true,
         });
-        this.add_child(this._seekBox);
+        this._column.add_child(this._seekBox);
 
         this._slider = new Slider.Slider(0);
         this._slider.add_style_class_name('np-seek');
@@ -632,7 +643,7 @@ const MediaCard = GObject.registerClass({
             style_class: 'np-volume-box',
             x_expand: true,
         });
-        this.add_child(this._volumeBox);
+        this._column.add_child(this._volumeBox);
 
         this._volumeIcon = new St.Icon({
             style_class: 'np-volume-icon',
@@ -660,7 +671,7 @@ const MediaCard = GObject.registerClass({
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this.add_child(this._controls);
+        this._column.insert_child_below(this._controls, this._seekBox);
 
         this._shuffleButton = this._addControl(this._controls, 'media-playlist-shuffle-symbolic',
             CONTROL_ICON_SIZE, () => this._player.setShuffle(!this._player.shuffle));
@@ -771,9 +782,11 @@ const MediaCard = GObject.registerClass({
 
         if (compact !== this._compactApplied) {
             this._compactApplied = compact;
-            const parent = compact ? this._topRow : this;
             this._controls.get_parent().remove_child(this._controls);
-            parent.add_child(this._controls);
+            if (compact)
+                this._headerRow.add_child(this._controls);
+            else
+                this._column.insert_child_below(this._controls, this._seekBox);
             this._controls.x_expand = !compact;
 
             if (compact)
@@ -783,6 +796,8 @@ const MediaCard = GObject.registerClass({
         }
 
         this._cover.icon_size = compact ? COMPACT_COVER_SIZE : options.coverSize;
+        this._coverButton.y_align = compact
+            ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.START;
         this._times.visible = !compact;
         this._title.scroll = options.scrollText;
         this._subtitle.scroll = options.scrollText;
@@ -810,7 +825,9 @@ const MediaCard = GObject.registerClass({
             player.hasVolume;
         this._seekBox.visible = !compact && options.showProgress &&
             this._lengthUs > 0;
-        this._badge.visible = compact && this._hasArtwork && !!this._badge.gicon;
+        // The badge says which player a card belongs to, folded or not.
+        this._badge.icon_size = compact ? BADGE_SIZE : FULL_BADGE_SIZE;
+        this._badge.visible = this._hasArtwork && !!this._badge.gicon;
 
         this._coverButton.reactive = options.raiseOnClick;
         this._coverButton.can_focus = options.raiseOnClick;
@@ -985,12 +1002,19 @@ const MediaCard = GObject.registerClass({
         this._trackId = trackId;
         this._lengthUs = lengthUs;
 
-        this._lengthLabel.text = formatTime(this._lengthUs);
+        this._showTime(this._positionUs);
 
         if (trackChanged) {
             this._setPositionUs(0);
             this._fetchPosition();
         }
+    }
+
+    // Elapsed on the left, what is left of the track on the right.
+    _showTime(positionUs) {
+        this._elapsedLabel.text = formatTime(positionUs);
+        this._lengthLabel.text = this._lengthUs > 0
+            ? `-${formatTime(Math.max(0, this._lengthUs - positionUs))}` : '';
     }
 
     // Players report every seek, including the ones triggered elsewhere.
@@ -1004,7 +1028,7 @@ const MediaCard = GObject.registerClass({
 
     _setPositionUs(positionUs) {
         this._positionUs = Math.max(0, Math.min(positionUs, this._lengthUs));
-        this._elapsedLabel.text = formatTime(this._positionUs);
+        this._showTime(this._positionUs);
 
         // Never move the handle out from under the user.
         if (this._dragging || this._seekPendingId)
@@ -1021,7 +1045,7 @@ const MediaCard = GObject.registerClass({
             return;
 
         const positionUs = Math.round(this._slider.value * this._lengthUs);
-        this._elapsedLabel.text = formatTime(positionUs);
+        this._showTime(positionUs);
 
         // Dragging seeks once on release; scroll and arrow keys have no drag,
         // so coalesce their steps into a single seek.
@@ -1044,7 +1068,7 @@ const MediaCard = GObject.registerClass({
             return;
 
         const targetUs = Math.round(this._slider.value * this._lengthUs);
-        this._elapsedLabel.text = formatTime(targetUs);
+        this._showTime(targetUs);
         this._seek(targetUs);
         this._positionUs = targetUs;
     }

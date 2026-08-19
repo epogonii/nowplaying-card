@@ -17,8 +17,8 @@
     max-width: 25em;
     background-color: rgba(0, 0, 0, 0.06); /* np-var: fill */
     border-radius: 18px;
-    padding: 12px;
-    spacing: 10px;
+    padding: 10px;
+    spacing: 6px;
     border: none;
     box-shadow: none;
 }
@@ -36,7 +36,7 @@
 }
 
 .np-header-box {
-    spacing: 14px;
+    spacing: 8px;
 }
 
 .np-cover {
@@ -62,7 +62,7 @@
 
 /* Thin, handle-less bar so it reads as a progress line, not a volume slider. */
 .np-seek {
-    height: 14px;
+    height: 12px;
     min-width: 8em;
     -barlevel-height: 4px;
     -slider-handle-radius: 0;
@@ -86,14 +86,14 @@
 }
 
 .np-controls {
-    spacing: 14px;
+    spacing: 8px;
 }
 
 .np-control {
     border-radius: 99px;
     border: none;
     box-shadow: none;
-    padding: 6px;
+    padding: 4px;
 }
 
 .np-control:hover, .np-control:focus {
@@ -116,8 +116,16 @@
     spacing: 4px;
 }
 
-.np-card-compact .np-header-box {
+.np-card-compact .np-top-row {
     spacing: 10px;
+}
+
+.np-card-compact .np-column {
+    spacing: 0;
+}
+
+.np-card-compact .np-header-box {
+    spacing: 8px;
 }
 
 .np-card-compact .np-controls {
@@ -139,7 +147,12 @@
 }
 
 .np-top-row {
-    spacing: 8px;
+    spacing: 12px;
+}
+
+/* Everything that is not the cover: text, transport, seek bar. */
+.np-column {
+    spacing: 6px;
 }
 
 /* Own popup: the card carries all the padding, so the menu adds none. */
