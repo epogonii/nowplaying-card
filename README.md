@@ -23,13 +23,19 @@ player. Nothing to configure to get going, nothing to install beside it.
 ## Features
 
 - Every MPRIS player, however it is packaged: native, Flatpak, Snap
-- Cover art from the player, its application icon when the artwork sits in a
-  sandbox the shell cannot read
+- Cover art however the player hands it over: a file, a URL, or the picture
+  itself inline; a browser that writes the file a moment after it announces the
+  track is waited for, and a player whose artwork sits in a sandbox the shell
+  cannot read falls back to its own application icon
+- Artwork fills the square it is given, cropped rather than squeezed, whatever
+  shape it arrived in
 - Seekable progress bar: exact `SetPosition` where the player reports a track
   id, a relative `Seek` otherwise
 - Volume slider for players that carry a volume of their own
 - Shuffle and repeat where the player supports them
 - Skip buttons only when the player says it can skip
+- A file with no tags is named after itself, so a local track is not left
+  carrying the player's own name on both lines
 - Transport, track text, wheel and middle click in the panel itself, so a track
   can be changed without opening anything
 - Click the cover to switch to the player's own window
@@ -54,7 +60,16 @@ player. Nothing to configure to get going, nothing to install beside it.
 
 Not published yet.
 
-#### Manual installation
+#### From a release
+
+Every tag builds the same zip that goes to extensions.gnome.org:
+
+```sh
+gnome-extensions install --force nowplaying@epogonii.github.io.shell-extension.zip
+gnome-extensions enable nowplaying@epogonii.github.io
+```
+
+#### From the sources
 
 ```sh
 gnome-extensions pack --force --schema=schemas/org.gnome.shell.extensions.nowplaying.gschema.xml \
