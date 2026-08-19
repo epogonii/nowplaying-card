@@ -1,14 +1,14 @@
 <p align="center">
+  <img alt="GNOME Shell 45 to 50" src="https://img.shields.io/badge/GNOME%20Shell-45%20to%2050-5c5cf5?logo=gnome&logoColor=white">
+  <img alt="License GPL-2.0-or-later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-8f33c7">
+  <a href="https://github.com/sponsors/epogonii"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-GitHub-ea4aaa?logo=githubsponsors&logoColor=white"></a>
+</p>
+
+<p align="center">
   <img src="docs/equalizer.gif" width="128" height="128" alt="Now Playing Card">
 </p>
 
 <h1 align="center">Now Playing Card</h1>
-
-<p align="center">
-  <img alt="GNOME Shell 45 to 50" src="https://img.shields.io/badge/GNOME%20Shell-45%20to%2050-4a86cf?logo=gnome&logoColor=white">
-  <img alt="License GPL-2.0-or-later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue">
-  <a href="https://github.com/sponsors/epogonii"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-GitHub-ea4aaa?logo=githubsponsors&logoColor=white"></a>
-</p>
 
 ## What does this extension do?
 
