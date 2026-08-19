@@ -21,8 +21,10 @@ install_file() {
 
 python3 "$src/tools/gen-stylesheets.py"
 
+# LICENSE comes along the same as it does in the packed zip: the copy on disk
+# should carry the terms it is given under.
 for f in metadata.json extension.js prefs.js stylesheet.css \
-         stylesheet-light.css stylesheet-dark.css; do
+         stylesheet-light.css stylesheet-dark.css LICENSE; do
     install_file "$src/$f" "$dst/$f"
 done
 install_file "$src/schemas/org.gnome.shell.extensions.nowplaying.gschema.xml" \
