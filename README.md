@@ -80,7 +80,7 @@ Preferences apply immediately.
 | Show in the top bar | Always, only while a player is running, or never |
 | Playing player first | Keep the card that is playing at the top |
 | Hide the built-in media controls | Keep GNOME's own player out of the notification list |
-| Ignored players | Names, separated by commas, that get no card |
+| Ignored players | Picked from the installed apps, or typed by hand |
 
 ---
 

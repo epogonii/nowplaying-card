@@ -21,6 +21,7 @@ const WALLETS = [
     ['Cardano', 'DdzFFzCqrhsmpnmUqivufj3TmDzksP4HKzcksRUNVr8xA4Gbj7PngV6TfkZuqUqeeKxp138t2Ftd1HypLFkUQ8F1hGtEmyhTP9VnZcUt'],
 ];
 const VISIBILITIES = ['always', 'active', 'never'];
+const IGNORED_KEY = 'ignored-players';
 
 export default class NowPlayingPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
@@ -199,13 +200,18 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         behavior.add(builtinRow);
 
         const players = new Adw.PreferencesGroup({
-            title: _('Players'),
-            description: _('Names separated by commas, matched against the app id, the bus name and the name a player reports. Example: firefox, chromium'),
+            title: _('Ignored players'),
+            description: _('These get no card. A name is matched against the app id, the bus name and the name the player reports.'),
         });
         page.add(players);
 
-        const ignoreRow = new Adw.EntryRow({title: _('Ignored players')});
-        players.add(ignoreRow);
+        const addPlayer = new Gtk.Button({
+            icon_name: 'list-add-symbolic',
+            tooltip_text: _('Add a player'),
+            css_classes: ['flat'],
+        });
+        addPlayer.connect('clicked', () => this._pickPlayer(window, settings));
+        players.set_header_suffix(addPlayer);
 
         this._addSupportGroup(page);
 
@@ -229,7 +235,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('panel-text-fixed', fixedWidthRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('hide-builtin-media', builtinRow, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        this._bindStrv(settings, 'ignored-players', ignoreRow);
+        this._bindIgnored(settings, players);
 
         // Everything about the panel button only means something in that mode,
         // and the width of the text only once there is text.
@@ -307,24 +313,164 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
     }
 
-    // One entry, one list: a comma separated line is easier to paste than a
-    // row of buttons is to click.
-    _bindStrv(settings, key, row) {
-        const read = () => settings.get_strv(key);
-        const parse = text => text.split(',')
-            .map(name => name.trim())
-            .filter(name => name);
+    // The setting is the list; the rows are built from it every time it
+    // changes, so removing one here and a change made elsewhere look the same.
+    _bindIgnored(settings, group) {
+        let rows = [];
 
-        row.text = read().join(', ');
-        row.connect('changed', () => {
-            const names = parse(row.text);
-            if (names.join('\n') !== read().join('\n'))
-                settings.set_strv(key, names);
+        const rebuild = () => {
+            rows.forEach(row => group.remove(row));
+            rows = [];
+
+            const names = settings.get_strv(IGNORED_KEY);
+            if (names.length === 0) {
+                const empty = new Adw.ActionRow({
+                    title: _('Every player gets a card'),
+                    sensitive: false,
+                });
+                rows.push(empty);
+                group.add(empty);
+                return;
+            }
+
+            for (const name of names) {
+                const row = new Adw.ActionRow({title: name, use_markup: false});
+                const remove = new Gtk.Button({
+                    icon_name: 'list-remove-symbolic',
+                    tooltip_text: _('Show this player again'),
+                    valign: Gtk.Align.CENTER,
+                    css_classes: ['flat'],
+                });
+                remove.connect('clicked', () => settings.set_strv(IGNORED_KEY,
+                    settings.get_strv(IGNORED_KEY).filter(other => other !== name)));
+                row.add_suffix(remove);
+                rows.push(row);
+                group.add(row);
+            }
+        };
+
+        settings.connect(`changed::${IGNORED_KEY}`, rebuild);
+        rebuild();
+    }
+
+    // Anything that speaks MPRIS can be named by hand, a player in a flatpak
+    // or one with no .desktop file included, so the search doubles as the
+    // entry: whatever is typed is offered as it stands.
+    _pickPlayer(parent, settings) {
+        const window = new Adw.Window({
+            transient_for: parent,
+            modal: true,
+            title: _('Add a player'),
+            default_width: 460,
+            default_height: 560,
         });
-        settings.connect(`changed::${key}`, () => {
-            const text = read().join(', ');
-            if (parse(row.text).join('\n') !== read().join('\n'))
-                row.text = text;
+
+        const search = new Gtk.SearchEntry({
+            placeholder_text: _('Search apps, or type a name'),
+            hexpand: true,
         });
+
+        const list = new Gtk.ListBox({
+            selection_mode: Gtk.SelectionMode.NONE,
+            css_classes: ['boxed-list'],
+            valign: Gtk.Align.START,
+        });
+
+        const add = name => {
+            const wanted = name.trim();
+            const names = settings.get_strv(IGNORED_KEY);
+            if (wanted && !names.includes(wanted))
+                settings.set_strv(IGNORED_KEY, [...names, wanted]);
+
+            window.close();
+        };
+
+        const manual = new Adw.ActionRow({activatable: true, use_markup: false});
+        manual.add_prefix(new Gtk.Image({icon_name: 'list-add-symbolic'}));
+        list.append(manual);
+
+        for (const app of this._installedApps()) {
+            const row = new Adw.ActionRow({
+                title: app.name,
+                subtitle: app.id,
+                activatable: true,
+                use_markup: false,
+            });
+            if (app.icon)
+                row.add_prefix(new Gtk.Image({gicon: app.icon, pixel_size: 24}));
+
+            row._name = `${app.name} ${app.id}`.toLowerCase();
+            row._value = app.id;
+            list.append(row);
+        }
+
+        list.set_filter_func(row => {
+            const text = search.text.trim().toLowerCase();
+            if (row === manual)
+                return text !== '';
+
+            return text === '' || row._name.includes(text);
+        });
+        list.connect('row-activated', (_list, row) =>
+            add(row === manual ? search.text : row._value));
+
+        search.connect('search-changed', () => {
+            const text = search.text.trim();
+            // A function as the replacement, so a $ in the name stays a $.
+            manual.title = _('Use \u201c%s\u201d').replace('%s', () => text);
+            manual.visible = text !== '';
+            list.invalidate_filter();
+        });
+        search.connect('activate', () => add(search.text));
+
+        const header = new Adw.HeaderBar({
+            title_widget: search,
+            show_start_title_buttons: false,
+            show_end_title_buttons: false,
+        });
+        const cancel = new Gtk.Button({label: _('Cancel')});
+        cancel.connect('clicked', () => window.close());
+        header.pack_start(cancel);
+
+        const view = new Adw.ToolbarView({
+            content: new Gtk.ScrolledWindow({
+                hscrollbar_policy: Gtk.PolicyType.NEVER,
+                child: new Adw.Clamp({
+                    child: list,
+                    maximum_size: 420,
+                    margin_top: 12,
+                    margin_bottom: 12,
+                    margin_start: 12,
+                    margin_end: 12,
+                }),
+            }),
+        });
+        view.add_top_bar(header);
+        window.set_content(view);
+
+        const keys = new Gtk.EventControllerKey();
+        keys.connect('key-pressed', (_controller, keyval) => {
+            if (keyval !== Gdk.KEY_Escape)
+                return Gdk.EVENT_PROPAGATE;
+
+            window.close();
+            return Gdk.EVENT_STOP;
+        });
+        window.add_controller(keys);
+
+        window.present();
+        search.grab_focus();
+    }
+
+    _installedApps() {
+        return Gio.AppInfo.get_all()
+            .filter(app => app.should_show())
+            .map(app => ({
+                id: (app.get_id() ?? '').replace(/\.desktop$/, ''),
+                name: app.get_display_name() || app.get_name() || '',
+                icon: app.get_icon(),
+            }))
+            .filter(app => app.id && app.name)
+            .sort((first, second) => first.name.localeCompare(second.name));
     }
 }
