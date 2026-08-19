@@ -1,1 +1,5 @@
-custom: ["https://www.paypal.com/paypalme/pogonii"]
+# Puts a Sponsor button on the repo page. GitHub allows up to four custom
+# links; the second one points at the README, where the crypto addresses are.
+custom:
+  - "https://www.paypal.com/paypalme/pogonii"
+  - "https://github.com/epogonii/nowplaying-card#support"
