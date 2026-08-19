@@ -146,7 +146,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             subtitle: _('With several players one card is open and the rest are rows'),
             model: new Gtk.StringList({
                 strings: [
-                    _('Accordion with several players'),
+                    _('Accordion'),
                     _('Always full'),
                     _('Always compact'),
                 ],
@@ -205,7 +205,10 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         card.add(scrollTextRow);
 
-        const icon = new Adw.PreferencesGroup({title: _('Icon')});
+        const icon = new Adw.PreferencesGroup({
+            title: _('Icon'),
+            description: _('The equalizer, both in the top bar and on the card.'),
+        });
         cardPage.add(icon);
 
         const iconStyleRow = new Adw.ComboRow({
@@ -215,7 +218,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
                 strings: [
                     _('Square ends'),
                     _('Rounded ends'),
-                    _('Rounded, cycling colours'),
+                    _('Cycling colours'),
                 ],
             }),
         });
