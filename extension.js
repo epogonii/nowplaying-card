@@ -196,10 +196,14 @@ const SPEEDS = [7.1, 9.7, 5.3];
 const PHASES = [0, 2.1, 4.2];
 const STATIC_HEIGHTS = [0.35, 0.7, 0.5];
 // Seconds for one turn around the colour wheel, and how far apart the bars sit
-// on it, for the colour-cycling style.
-const HUE_PERIOD = 6;
-const HUE_SPREAD = 1 / N_BARS;
-const HUE_SATURATION = 0.85;
+// on it, for the colour-cycling style. A third of the wheel apart puts pure red
+// next to pure green, which is loud in a panel; a narrower slice keeps the
+// three in the same part of the wheel and reads as one gradient walking past.
+const HUE_PERIOD = 10;
+const HUE_SPREAD = 1 / 8;
+const HUE_SATURATION = 0.7;
+// Where the three stand while nothing plays.
+const HUE_STATIC = 0.58;
 
 // Hue in turns, saturation and value in 0 to 1, out as red, green and blue in
 // the same range.
@@ -384,7 +388,7 @@ class EqualizerIcon extends St.DrawingArea {
             if (rainbow) {
                 // Standing still means standing on one colour each, so a
                 // paused icon is still three colours and not three greys.
-                const hue = i * HUE_SPREAD + (moving ? t / HUE_PERIOD : 0);
+                const hue = i * HUE_SPREAD + (moving ? t / HUE_PERIOD : HUE_STATIC);
                 const [red, green, blue] = hsvToRgb(hue, HUE_SATURATION, value);
                 cr.setSourceRGBA(red, green, blue, color.alpha / 255);
             }
