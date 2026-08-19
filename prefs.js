@@ -31,11 +31,28 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
 
-        const page = new Adw.PreferencesPage();
-        window.add(page);
+        // Three pages rather than one long scroll: what the card looks like,
+        // where the button lives, and which players get one at all.
+        const cardPage = new Adw.PreferencesPage({
+            title: _('Card'),
+            icon_name: 'audio-x-generic-symbolic',
+        });
+        window.add(cardPage);
+
+        const panelPage = new Adw.PreferencesPage({
+            title: _('Panel'),
+            icon_name: 'view-continuous-symbolic',
+        });
+        window.add(panelPage);
+
+        const playersPage = new Adw.PreferencesPage({
+            title: _('Players'),
+            icon_name: 'multimedia-player-symbolic',
+        });
+        window.add(playersPage);
 
         const placement = new Adw.PreferencesGroup({title: _('Placement')});
-        page.add(placement);
+        panelPage.add(placement);
 
         const locationRow = new Adw.ComboRow({
             title: _('Location'),
@@ -70,7 +87,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             title: _('Panel button'),
             description: _('Only used by the own-button mode.'),
         });
-        page.add(panel);
+        panelPage.add(panel);
 
         const textRow = new Adw.ComboRow({
             title: _('Track in the panel'),
@@ -122,7 +139,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         panel.add(middleRow);
 
         const card = new Adw.PreferencesGroup({title: _('Card')});
-        page.add(card);
+        cardPage.add(card);
 
         const layoutRow = new Adw.ComboRow({
             title: _('Card size'),
@@ -148,6 +165,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             }),
         });
         card.add(maxCardsRow);
+
+        const sortRow = new Adw.SwitchRow({
+            title: _('Playing player first'),
+            subtitle: _('Keep the card that is playing at the top of the stack'),
+        });
+        card.add(sortRow);
 
         const coverRow = new Adw.ComboRow({
             title: _('Cover size'),
@@ -182,6 +205,9 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         card.add(scrollTextRow);
 
+        const icon = new Adw.PreferencesGroup({title: _('Icon')});
+        cardPage.add(icon);
+
         const iconStyleRow = new Adw.ComboRow({
             title: _('Icon style'),
             subtitle: _('Shape of the equalizer bars'),
@@ -193,16 +219,13 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
                 ],
             }),
         });
-        card.add(iconStyleRow);
+        icon.add(iconStyleRow);
 
         const animateRow = new Adw.SwitchRow({
             title: _('Animate the icon'),
             subtitle: _('Move the equalizer bars during playback'),
         });
-        card.add(animateRow);
-
-        const behavior = new Adw.PreferencesGroup({title: _('Behavior')});
-        page.add(behavior);
+        icon.add(animateRow);
 
         const visibilityRow = new Adw.ComboRow({
             title: _('Show in the top bar'),
@@ -215,25 +238,22 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
                 ],
             }),
         });
-        behavior.add(visibilityRow);
+        placement.add(visibilityRow);
 
-        const sortRow = new Adw.SwitchRow({
-            title: _('Playing player first'),
-            subtitle: _('Keep the card that is playing at the top of the stack'),
-        });
-        behavior.add(sortRow);
+        const builtin = new Adw.PreferencesGroup({title: _('Built-in controls')});
+        playersPage.add(builtin);
 
         const builtinRow = new Adw.SwitchRow({
             title: _('Hide the built-in media controls'),
             subtitle: _('Keep GNOME\'s own player out of the notification list'),
         });
-        behavior.add(builtinRow);
+        builtin.add(builtinRow);
 
         const players = new Adw.PreferencesGroup({
             title: _('Ignored players'),
             description: _('These get no card. A name is matched against the app id, the bus name and the name the player reports.'),
         });
-        page.add(players);
+        playersPage.add(players);
 
         const addPlayer = new Gtk.Button({
             icon_name: 'list-add-symbolic',
@@ -243,7 +263,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         addPlayer.connect('clicked', () => this._pickPlayer(window, settings));
         players.set_header_suffix(addPlayer);
 
-        this._addSupportGroup(page);
+        this._addSupportGroup(playersPage);
 
         this._bindEnum(settings, 'location', LOCATIONS, locationRow);
         this._bindEnum(settings, 'panel-box', PANEL_BOXES, boxRow);
