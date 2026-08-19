@@ -36,7 +36,7 @@ player. Nothing to configure to get going, nothing to install beside it.
 - One popup width whatever the track is called, so nothing jumps between songs
 - Own panel button or embedded in Quick Settings, and the top-bar icon can be
   there always, only while a player runs, or never
-- Equalizer bars with square ends, rounded ends, or rounded ends in colours
+- Equalizer bars with rounded ends, square ends, or rounded ends in colours
   that keep moving
 - Follows the system light and dark theme and switches with it
 - Hides GNOME's own media controls while it runs, and gives them straight back

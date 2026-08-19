@@ -11,7 +11,7 @@ First release.
   open while that player is playing.
 - Transport buttons in the panel, plus wheel and middle-click actions.
 - Hides GNOME's own media section while running, and puts it back on disable.
-- Equalizer bars with square ends, rounded ends, or rounded ends that cycle
+- Equalizer bars with rounded ends, square ends, or rounded ends that cycle
   through colours while a player is playing.
 - The bars follow the frame clock, so the step is even whatever the refresh
   rate is, and the timer only exists while something is playing.

@@ -100,7 +100,8 @@ function cardInfo(card) {
         `shuffleBtn=${card._shuffleButton.visible} loopBtn=${card._loopButton.visible} ` +
         `loop=${card._player.loopStatus} shuffle=${card._player.shuffle} ` +
         `overflow=${card._title._overflow} ` +
-        `scrolling=${card._title._label.get_transition('translation-x') !== null}`;
+        `scrolling=${card._title._timeline !== null} ` +
+        `tx=${Math.round(card._title._label.translation_x)}`;
 }
 
 function accordion() {
@@ -656,6 +657,42 @@ export default class ProbeQs extends Extension {
             stateObj()?._settings.set_strv('ignored-players', []);
             stateObj()?._settings.set_boolean('panel-text-fixed', false);
         });
+
+        // A title too long to fit has to walk and come back, and it has to do
+        // it again on the second opening of the popup - a walk built out of
+        // chained eases could be left parked at the far end, because a shell
+        // that decides not to animate finishes an ease inside the call that
+        // starts it and the leg after it never came. The stub title is long
+        // enough on its own, so nothing here touches the text: a title set
+        // from the outside would reallocate the label and hide a restart that
+        // the popup itself caused.
+        const sample = (tag, seconds) => {
+            const seen = [];
+            const card = cards().find(c => c._title._overflow > 0);
+            if (!card) {
+                log(`PROBE WALK ${tag} no overflowing card`);
+                return;
+            }
+            const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
+                seen.push(`${Math.round(card._title._label.translation_x)}` +
+                    `:${card._title._overflow}:${card._title.get_width()}` +
+                    `:${card.get_width()}`);
+                if (seen.length * 0.25 < seconds)
+                    return GLib.SOURCE_CONTINUE;
+                log(`PROBE WALK ${tag} title="${card._title.text}" ` +
+                    `timeline=${card._title._timeline !== null} ` +
+                    `tx:overflow:labelW:cardW=${seen.join(' ')}`);
+                return GLib.SOURCE_REMOVE;
+            });
+            this._ids.push(id);
+        };
+
+        this._at(56, () => Main.panel.statusArea.quickSettings.menu.open(false));
+        this._at(56.5, () => sample('first', 5));
+
+        this._at(62, () => Main.panel.statusArea.quickSettings.menu.close());
+        this._at(63, () => Main.panel.statusArea.quickSettings.menu.open(false));
+        this._at(63.5, () => sample('second', 5));
 
         // Always, only while a player runs, or never at all. With players
         // around only 'never' differs; the other two part company once the

@@ -94,7 +94,7 @@
       <description>How many players the popup shows. Anything above that stays out of it, and a player that starts playing takes one of the places.</description>
     </key>
     <key name="equalizer-style" enum="org.gnome.shell.extensions.nowplaying.equalizer-style">
-      <default>'bars'</default>
+      <default>'rounded'</default>
       <summary>Icon style</summary>
       <description>Shape and colour of the equalizer bars: square ends, rounded ends, or rounded ends that cycle through colours while a player is playing.</description>
     </key>

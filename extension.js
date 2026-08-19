@@ -434,9 +434,10 @@ class ScrollingLabel extends St.Widget {
         this._scroll = true;
         this._maxWidth = 0;
         this._pin = false;
-        this._chaining = false;
         this._overflow = 0;
         this._idleId = null;
+        this._timeline = null;
+        this._away = 0;
 
         this.connect('notify::mapped', () => this._restart());
         this.connect('destroy', () => this._stop());
@@ -543,7 +544,14 @@ class ScrollingLabel extends St.Widget {
     }
 
     _restart() {
-        this._label.remove_all_transitions();
+        // How far along the walk was. A card changes width whenever a cover
+        // arrives or a neighbour of it folds, and every one of those is a new
+        // amount of text that does not fit; starting the walk over each time
+        // would leave a title in a busy popup standing at its first word for
+        // good.
+        const carried = this._timeline?.get_elapsed_time() ?? 0;
+
+        this._stopWalk();
         this._label.translation_x = 0;
 
         // With animations turned off the text stays where it is and keeps its
@@ -551,7 +559,20 @@ class ScrollingLabel extends St.Widget {
         if (!this._canScroll())
             return;
 
-        this._scrollAway();
+        this._away = Math.max(1, Math.round(
+            (this._overflow / (TEXT_SCROLL_SPEED * scaleFactor())) * 1000));
+        const duration = 2 * TEXT_SCROLL_PAUSE_MS + this._away +
+            TEXT_SCROLL_RETURN_MS;
+        this._timeline = new Clutter.Timeline({
+            actor: this,
+            duration,
+            repeat_count: -1,
+        });
+        this._timeline.connect('new-frame', () => this._onFrame());
+        this._timeline.start();
+        if (carried > 0)
+            this._timeline.advance(Math.min(carried, duration - 1));
+        this._onFrame();
     }
 
     _canScroll() {
@@ -559,42 +580,37 @@ class ScrollingLabel extends St.Widget {
             St.Settings.get().enable_animations;
     }
 
-    // One leg of the walk, and the next one only if this one took any time. A
-    // shell that decides not to animate - the popup was closed, the actor is
-    // off screen - finishes an ease inside the call that started it, and a
-    // chain that carried on from there would call itself until the stack ran
-    // out. The walk then waits for the next map or relayout instead.
-    _ease(props, next) {
-        if (!this._canScroll())
-            return;
+    // One walk: a pause at the start, out to the far end at a steady speed,
+    // a pause there, and back with the last of it easing off. The frame clock
+    // of the actor drives it, so the walk cannot be left parked halfway - a
+    // chain of eases could, because a shell that decides not to animate
+    // finishes an ease inside the call that starts it, and the leg after that
+    // one never came.
+    _onFrame() {
+        const elapsed = this._timeline.get_elapsed_time();
+        const there = TEXT_SCROLL_PAUSE_MS + this._away;
+        const backFrom = there + TEXT_SCROLL_PAUSE_MS;
+        let out;
 
-        this._chaining = true;
-        this._label.ease({
-            ...props,
-            onComplete: () => {
-                if (!this._chaining)
-                    next();
-            },
-        });
-        this._chaining = false;
+        if (elapsed <= TEXT_SCROLL_PAUSE_MS) {
+            out = 0;
+        } else if (elapsed <= there) {
+            out = (elapsed - TEXT_SCROLL_PAUSE_MS) / this._away;
+        } else if (elapsed <= backFrom) {
+            out = 1;
+        } else {
+            const left = Math.min(1,
+                (elapsed - backFrom) / TEXT_SCROLL_RETURN_MS);
+            out = (1 - left) * (1 - left);
+        }
+
+        this._label.translation_x = -Math.round(this._overflow * out);
     }
 
-    _scrollAway() {
-        this._ease({
-            translation_x: -this._overflow,
-            duration: (this._overflow / (TEXT_SCROLL_SPEED * scaleFactor())) * 1000,
-            delay: TEXT_SCROLL_PAUSE_MS,
-            mode: Clutter.AnimationMode.LINEAR,
-        }, () => this._scrollBack());
-    }
-
-    _scrollBack() {
-        this._ease({
-            translation_x: 0,
-            duration: TEXT_SCROLL_RETURN_MS,
-            delay: TEXT_SCROLL_PAUSE_MS,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-        }, () => this._scrollAway());
+    _stopWalk() {
+        this._timeline?.stop();
+        this._timeline = null;
+        this._label.remove_all_transitions();
     }
 
     _stop() {
@@ -602,7 +618,7 @@ class ScrollingLabel extends St.Widget {
             GLib.source_remove(this._idleId);
             this._idleId = null;
         }
-        this._label.remove_all_transitions();
+        this._stopWalk();
     }
 });
 
