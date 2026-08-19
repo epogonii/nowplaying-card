@@ -57,8 +57,11 @@
     font-weight: bold;
 }
 
+/* Second line under the title, and everything else that steps back: a
+   stylesheet colour with an alpha, since St reads no opacity property of its
+   own and a rule that sets one changes nothing. */
 .np-subtitle {
-    opacity: 0.55;
+    color: rgba(255, 255, 255, 0.6); /* np-var: dim */
     font-size: 0.9em;
 }
 
@@ -88,7 +91,7 @@
 .np-time {
     font-size: 0.8em;
     min-width: 2.6em;
-    opacity: 0.6;
+    color: rgba(255, 255, 255, 0.6); /* np-var: dim */
 }
 
 .np-controls {
@@ -107,7 +110,7 @@
 }
 
 .np-control:insensitive {
-    opacity: 0.4;
+    color: rgba(255, 255, 255, 0.4); /* np-var: faint */
 }
 
 /* A stack of several players: any row can be clicked open, so it answers the
@@ -176,7 +179,7 @@
 
 .np-placeholder {
     padding: 10px 14px;
-    opacity: 0.6;
+    color: rgba(255, 255, 255, 0.6); /* np-var: dim */
 }
 
 /* Only the cover switches to the player, so only the cover reacts. */
@@ -206,7 +209,7 @@
 
 /* Reads as a level meter beside the text, not as something to click. */
 .np-card-equalizer {
-    opacity: 0.45;
+    color: rgba(255, 255, 255, 0.4); /* np-var: faint */
     height: 14px;
     margin: 0;
 }
@@ -217,7 +220,7 @@
 }
 
 .np-volume-icon {
-    opacity: 0.7;
+    color: rgba(255, 255, 255, 0.6); /* np-var: dim */
 }
 
 /* Same treatment as the seek bar: a plain line until it is aimed at. */
@@ -235,7 +238,7 @@
 
 /* A toggle that is off keeps its place but steps back. */
 .np-control-off {
-    opacity: 0.45;
+    color: rgba(255, 255, 255, 0.4); /* np-var: faint */
 }
 
 .np-panel-box {
