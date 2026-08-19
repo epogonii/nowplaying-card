@@ -13,5 +13,9 @@
   ],
   "version-name": "1.0",
   "url": "https://github.com/epogonii/nowplaying-card",
+  "donations": {
+    "github": "epogonii",
+    "paypal": "pogonii"
+  },
   "settings-schema": "org.gnome.shell.extensions.nowplaying"
 }
