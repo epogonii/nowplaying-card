@@ -71,7 +71,7 @@ Preferences apply immediately.
 | Controls in the panel | Previous, play and next next to the icon |
 | Middle click | Nothing, play or pause, or next track |
 | Card size | Accordion with several players, always full, or always compact |
-| Cover size | Small, medium or large artwork in a full card |
+| Cover size | Smallest artwork in a full card; it grows to the height of the card |
 | Show the progress bar | Position and length of the track |
 | Show the volume slider | For players that carry a volume of their own |
 | Show shuffle and repeat | For players that support them |

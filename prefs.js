@@ -137,6 +137,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
 
         const coverRow = new Adw.ComboRow({
             title: _('Cover size'),
+            subtitle: _('A minimum: the cover grows to the height of the card'),
             model: new Gtk.StringList({
                 strings: [_('Small'), _('Medium'), _('Large')],
             }),

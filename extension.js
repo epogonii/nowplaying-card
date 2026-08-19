@@ -75,7 +75,7 @@ const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(`
 </node>`);
 
 const COVER_SIZE = 48;
-const COMPACT_COVER_SIZE = 32;
+const COMPACT_COVER_SIZE = 40;
 const CONTROL_ICON_SIZE = 20;
 const PLAY_ICON_SIZE = 26;
 const COMPACT_CONTROL_ICON_SIZE = 16;
@@ -580,6 +580,8 @@ const MediaCard = GObject.registerClass({
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._topRow.add_child(this._column);
+        this._column.connect('notify::height', () => this._syncCover());
+        this.connect('notify::mapped', () => this._syncCover());
 
         this._headerRow = new St.BoxLayout({
             style_class: 'np-header-box',
@@ -789,7 +791,7 @@ const MediaCard = GObject.registerClass({
                 this.remove_style_class_name('np-card-compact');
         }
 
-        this._cover.icon_size = compact ? COMPACT_COVER_SIZE : options.coverSize;
+        this._syncCover();
         this._coverButton.y_align = compact
             ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.START;
         this._times.visible = !compact;
@@ -975,6 +977,36 @@ const MediaCard = GObject.registerClass({
         if (parts.length === 0)
             return this._player.app?.get_name() || '';
         return parts.join(' - ');
+    }
+
+    // A square of art as tall as everything standing next to it. The size from
+    // the preferences is the floor and not the answer: a card showing a seek
+    // bar and the times is taller than any of the three sizes.
+    _syncCover() {
+        if (!this._options || this._syncingCover)
+            return;
+
+        // Actor sizes are physical pixels, an icon size is not.
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
+
+        if (this._compact) {
+            this._cover.icon_size = COMPACT_COVER_SIZE;
+            return;
+        }
+
+        // Asking a card that is not on the stage yet how tall it is walks a
+        // style tree that does not exist. The map below brings us back.
+        if (!this.get_stage())
+            return;
+
+        const beside = Math.round(this._column.height / scale);
+        const size = Math.max(this._options.coverSize, beside);
+        if (Math.abs(this._cover.icon_size - size) < 1)
+            return;
+
+        this._syncingCover = true;
+        this._cover.icon_size = size;
+        this._syncingCover = false;
     }
 
     _metadataValue(key) {
