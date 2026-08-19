@@ -96,38 +96,6 @@ Include, please:
 
 ---
 
-## Development
-
-```sh
-tools/nested/run-nested-three.sh   # nested shell, three MPRIS stubs, probe extension
-tools/nested/run-nested.sh         # nested shell on your own session bus
-tools/install-local.sh             # install into ~/.local, regenerating the stylesheets
-```
-
-`run-nested-three.sh` starts a headless GNOME Shell of its own with three stub
-players - one naming a `.desktop` file, one without a `DesktopEntry`, one with a
-window - and a probe extension that logs the card state, both seek paths, the
-accordion, the panel text, real pointer clicks on the panel transport, the
-stylesheet variant and the built-in-media restore. It touches nothing in the
-live session; check its output for `JS ERROR`, `CRITICAL` and `PROBE ERROR`.
-
-`stylesheet.css` is the neutral base. Shell 47 and later load
-`stylesheet-light.css` or `stylesheet-dark.css` instead and reload them when the
-system theme changes; both come from the base file through
-`tools/gen-stylesheets.py`, which replaces the colours on lines marked
-`/* np-var: NAME */` and nothing else. Older shells find no variant and use the
-base.
-
-Install through `tools/install-local.sh` rather than `cp`: it renames every file
-into place. A shell still running the previous copy keeps
-`schemas/gschemas.compiled` memory-mapped, and overwriting those bytes
-underneath it leaves the process with a broken view of the schema. Settings are
-read through `readSetting()`, which answers from a defaults table when the
-compiled schema has no such key, so a half-replaced install cannot take the
-shell down either.
-
----
-
 ## Support ☕
 
 The extension is free and stays free. If it earned a coffee:
