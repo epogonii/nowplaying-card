@@ -134,9 +134,10 @@ const SCROLL_NOTCH = 1;
 const TEXT_SCROLL_SPEED = 30;
 const TEXT_SCROLL_PAUSE_MS = 1600;
 const TEXT_SCROLL_RETURN_MS = 500;
-const PRESS_DURATION_MS = 140;
-const PRESS_SCALE = 0.82;
-const PRESS_NUDGE = 5;
+const PRESS_DIP_MS = 90;
+const PRESS_RETURN_MS = 240;
+const PRESS_SCALE = 0.92;
+const PRESS_NUDGE = 3;
 
 // Every default the schema declares, so a read can still answer when GSettings
 // cannot. Replacing an extension's files under a running shell leaves the
@@ -646,8 +647,10 @@ class ScrollingLabel extends St.Widget {
     }
 });
 
-// A press is confirmed by the icon: it dips and springs back, and the skip
-// buttons start their way back from the side they send the track.
+// A press is confirmed by the icon: it eases down, leaning towards the side it
+// sends the track, and takes almost three times as long to come back up. Both
+// halves are animated, since dropping the icon into place and only easing the
+// way back is what makes a press feel like a snap.
 function animatePress(button, nudge) {
     if (!St.Settings.get().enable_animations)
         return;
@@ -655,14 +658,19 @@ function animatePress(button, nudge) {
     const icon = button.child;
     icon.remove_all_transitions();
     icon.set_pivot_point(0.5, 0.5);
-    icon.set_scale(PRESS_SCALE, PRESS_SCALE);
-    icon.translation_x = nudge * scaleFactor();
     icon.ease({
-        scale_x: 1,
-        scale_y: 1,
-        translation_x: 0,
-        duration: PRESS_DURATION_MS,
-        mode: Clutter.AnimationMode.EASE_OUT_BACK,
+        scale_x: PRESS_SCALE,
+        scale_y: PRESS_SCALE,
+        translation_x: nudge * scaleFactor(),
+        duration: PRESS_DIP_MS,
+        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        onComplete: () => icon.ease({
+            scale_x: 1,
+            scale_y: 1,
+            translation_x: 0,
+            duration: PRESS_RETURN_MS,
+            mode: Clutter.AnimationMode.EASE_OUT_BACK,
+        }),
     });
 }
 
