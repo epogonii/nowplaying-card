@@ -170,12 +170,6 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         card.add(animateRow);
 
-        const pressRow = new Adw.SwitchRow({
-            title: _('Animate button presses'),
-            subtitle: _('Dip the icon of a control when it is pressed'),
-        });
-        card.add(pressRow);
-
         const behavior = new Adw.PreferencesGroup({title: _('Behavior')});
         page.add(behavior);
 
@@ -197,11 +191,6 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             subtitle: _('Keep the card that is playing at the top of the stack'),
         });
         behavior.add(sortRow);
-
-        const raiseRow = new Adw.SwitchRow({
-            title: _('Click the cover to switch to the player'),
-        });
-        behavior.add(raiseRow);
 
         const builtinRow = new Adw.SwitchRow({
             title: _('Hide the built-in media controls'),
@@ -235,9 +224,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('show-loop-shuffle', loopRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('scroll-text', scrollTextRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('sort-playing-first', sortRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        settings.bind('raise-on-click', raiseRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('animate-icon', animateRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        settings.bind('animate-buttons', pressRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-controls', controlsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-text-fixed', fixedWidthRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('hide-builtin-media', builtinRow, 'active', Gio.SettingsBindFlags.DEFAULT);

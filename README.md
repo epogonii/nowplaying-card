@@ -77,10 +77,8 @@ Preferences apply immediately.
 | Show shuffle and repeat | For players that support them |
 | Scroll long text | Move a title sideways instead of cutting it off |
 | Animate the icon | Move the equalizer bars during playback |
-| Animate button presses | Dip the icon of a control when it is pressed |
 | Show in the top bar | Always, only while a player is running, or never |
 | Playing player first | Keep the card that is playing at the top |
-| Click the cover to switch to the player | Raise the player's window |
 | Hide the built-in media controls | Keep GNOME's own player out of the notification list |
 | Ignored players | Names, separated by commas, that get no card |
 

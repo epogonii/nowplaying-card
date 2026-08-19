@@ -82,11 +82,6 @@
       <summary>Show the controls in the panel</summary>
       <description>Put previous, play and next next to the icon, so a track can be changed without opening the card.</description>
     </key>
-    <key name="animate-buttons" type="b">
-      <default>true</default>
-      <summary>Animate button presses</summary>
-      <description>Dip the icon of a control when it is pressed.</description>
-    </key>
     <key name="animate-icon" type="b">
       <default>true</default>
       <summary>Animate the equalizer icon</summary>
@@ -113,10 +108,6 @@
     <key name="sort-playing-first" type="b">
       <default>true</default>
       <summary>Put the playing player first</summary>
-    </key>
-    <key name="raise-on-click" type="b">
-      <default>true</default>
-      <summary>Switch to the player when the cover is clicked</summary>
     </key>
     <key name="scroll-text" type="b">
       <default>true</default>

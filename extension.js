@@ -131,13 +131,11 @@ const DEFAULTS = {
     'hide-builtin-media': true,
     'card-layout': 'auto',
     'animate-icon': true,
-    'animate-buttons': true,
     'cover-size': 'medium',
     'show-progress': true,
     'show-volume': true,
     'show-loop-shuffle': true,
     'sort-playing-first': true,
-    'raise-on-click': true,
     'scroll-text': true,
     'panel-scroll': 'track',
     'panel-middle-click': 'play-pause',
@@ -498,7 +496,6 @@ const CARD_OPTIONS = {
     showVolume: DEFAULTS['show-volume'],
     showLoopShuffle: DEFAULTS['show-loop-shuffle'],
     sortPlayingFirst: DEFAULTS['sort-playing-first'],
-    raiseOnClick: DEFAULTS['raise-on-click'],
     scrollText: DEFAULTS['scroll-text'],
     animate: DEFAULTS['animate-icon'],
 };
@@ -730,16 +727,11 @@ const MediaCard = GObject.registerClass({
             }),
         });
         button.connect('clicked', () => {
-            this._animatePress(button, nudge);
+            animatePress(button, nudge);
             callback();
         });
         parent.add_child(button);
         return button;
-    }
-
-    _animatePress(button, nudge) {
-        if (this._options.animateButtons)
-            animatePress(button, nudge);
     }
 
     // Several cards at once would fill the screen at full size, so the compact
@@ -828,9 +820,6 @@ const MediaCard = GObject.registerClass({
         // The badge says which player a card belongs to, folded or not.
         this._badge.icon_size = compact ? BADGE_SIZE : FULL_BADGE_SIZE;
         this._badge.visible = this._hasArtwork && !!this._badge.gicon;
-
-        this._coverButton.reactive = options.raiseOnClick;
-        this._coverButton.can_focus = options.raiseOnClick;
     }
 
     get playing() {
@@ -1996,10 +1985,8 @@ class MediaModel {
             showVolume: readSetting(this._settings, 'show-volume'),
             showLoopShuffle: readSetting(this._settings, 'show-loop-shuffle'),
             sortPlayingFirst: readSetting(this._settings, 'sort-playing-first'),
-            raiseOnClick: readSetting(this._settings, 'raise-on-click'),
             scrollText: readSetting(this._settings, 'scroll-text'),
             animate: readSetting(this._settings, 'animate-icon'),
-            animateButtons: readSetting(this._settings, 'animate-buttons'),
         };
     }
 
@@ -2088,8 +2075,7 @@ class NowPlayingButton extends PanelMenu.Button {
         });
 
         const act = () => {
-            if (readSetting(this._settings, 'animate-buttons'))
-                animatePress(button, nudge);
+            animatePress(button, nudge);
             callback();
         };
 
@@ -2367,14 +2353,12 @@ export default class NowPlayingExtension extends Extension {
             'changed::panel-index', () => this._rebuild(),
             'changed::indicator-visibility', () => this._host?._syncVisibility(),
             'changed::animate-icon', () => this._host?._model.sync(),
-            'changed::animate-buttons', () => this._host?._model.sync(),
             'changed::card-layout', () => this._host?._model.sync(),
             'changed::cover-size', () => this._host?._model.sync(),
             'changed::show-progress', () => this._host?._model.sync(),
             'changed::show-volume', () => this._host?._model.sync(),
             'changed::show-loop-shuffle', () => this._host?._model.sync(),
             'changed::sort-playing-first', () => this._host?._model.sync(),
-            'changed::raise-on-click', () => this._host?._model.sync(),
             'changed::scroll-text', () => this._host?._model.sync(),
             'changed::panel-text', () => this._host?._model.sync(),
             'changed::panel-text-width', () => this._host?._model.sync(),
