@@ -2152,6 +2152,22 @@ class MprisPlayer extends Signals.EventEmitter {
         this._update();
     }
 
+    // A player with nothing to say about the track still says what it opened:
+    // VLC playing a file with no tags sends only xesam:url, and the name of
+    // the file beats naming the player twice. Local files only, since a page
+    // address is not a title and browsers send one anyway.
+    _titleFromUrl(url) {
+        if (typeof url !== 'string' || !url.startsWith('file://'))
+            return '';
+
+        const name = Gio.File.new_for_uri(url).get_basename();
+        if (!name || name === '/' || name === '.')
+            return '';
+
+        const dot = name.lastIndexOf('.');
+        return dot > 0 ? name.slice(0, dot) : name;
+    }
+
     _update() {
         const metadata = {};
         for (const key in this._playerProxy?.Metadata ?? {})
@@ -2166,7 +2182,9 @@ class MprisPlayer extends Signals.EventEmitter {
             : [];
 
         const title = metadata['xesam:title'];
-        this._trackTitle = typeof title === 'string' ? title : '';
+        this._trackTitle = typeof title === 'string' && title
+            ? title
+            : this._titleFromUrl(metadata['xesam:url']);
 
         const coverUrl = metadata['mpris:artUrl'];
         this._trackCoverUrl = typeof coverUrl === 'string' ? coverUrl : '';
