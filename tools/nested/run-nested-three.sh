@@ -36,14 +36,16 @@ dbus-run-session -- bash -c '
   # flatpak-style: names a .desktop file, so the app icon can badge the cover
   gjs $S/mprisstub5.js spotify spotify Spotify yes yes \
       "Scott Street From The Album Stranger In The Alps Deluxe Edition" \
-      file://$S/nested-home/np-cover.png no yes yes &
+      file://$S/nested-home/np-cover-wide.png no yes yes &
   A=$!
   # chrome-style: no DesktopEntry at all, no artwork, cannot skip tracks
   gjs $S/mprisstub5.js chromium.instance7 none Chrome no no "White Noise" none no no no &
   B=$!
   # a player with a window of its own, found through the window tracker
+  # telegram-style artwork: the picture itself inline, as a data: URI
+  INLINE_ART="data:image/png;base64,$(base64 -w0 $S/nested-home/np-art-square.png)"
   WAYLAND_DISPLAY=nptest gjs $S/mprisstub5.js windowed none "Nothing Like This" \
-      yes no "Windowed Track" file://$S/nested-home/np-cover.png yes no no &
+      yes no "Windowed Track" "$INLINE_ART" yes no no &
   C=$!
   sleep 84
   echo "HARNESS killing stubs"

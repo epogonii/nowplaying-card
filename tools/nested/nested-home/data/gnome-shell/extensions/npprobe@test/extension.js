@@ -408,6 +408,24 @@ export default class ProbeQs extends Extension {
 
         this._at(28.5, rawDump);
 
+        // What the cover draws: the tile is the box the artwork occupies, and
+        // artwork that is not square has to leave it in the shape it came in
+        // rather than being pulled out to the corners.
+        const coverDump = tag => cards().forEach(c => {
+            log(`PROBE COVER ${tag} ` +
+                `${c._player.busName.replace('org.mpris.MediaPlayer2.', '')} ` +
+                `iconSize=${c._cover.icon_size} ` +
+                `icon=${Math.round(c._cover.width)}x${Math.round(c._cover.height)} ` +
+                `tile=${Math.round(c._coverTile.width)}x${Math.round(c._coverTile.height)} ` +
+                `art=${c._hasArtwork} ` +
+                `aspect=${c._artAspect ? c._artAspect.toFixed(2) : 'null'} ` +
+                `compact=${c._compact}`);
+        });
+
+        this._at(25.4, () => coverDump('auto'));
+        this._at(32.4, () => coverDump('later'));
+        this._at(79, () => coverDump('compact'));
+
         // Where the badge lands: the app icon has to ride the bottom right
         // corner of the artwork, the way the card is meant to look.
         this._at(82, () => {

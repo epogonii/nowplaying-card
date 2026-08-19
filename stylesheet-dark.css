@@ -43,6 +43,12 @@
     border-radius: 8px;
 }
 
+/* A player that sends no artwork gets its own icon on a plain tile, so the
+   card still has a square where the picture would be. */
+.np-cover-empty {
+    background-color: rgba(255, 255, 255, 0.08); /* np-var: fill */
+}
+
 .np-labels {
     spacing: 2px;
 }

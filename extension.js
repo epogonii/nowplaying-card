@@ -5,6 +5,7 @@ import St from 'gi://St';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
+import GdkPixbuf from 'gi://GdkPixbuf';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import Cairo from 'cairo';
@@ -109,6 +110,15 @@ const COVER_SIZES = {
     'medium': 72,
     'large': 96,
 };
+
+// Artwork keeps the shape it arrived in, but only so far: a strip of film
+// three times as wide as it is tall would leave the card with a sliver of a
+// picture, so the box stops at twice as wide or twice as tall as it is.
+const MIN_ART_ASPECT = 0.5;
+const MAX_ART_ASPECT = 2;
+// How much of the cover the player's own icon fills when a track brings no
+// artwork with it. All of it turns a logo into a poster.
+const FALLBACK_ICON_RATIO = 0.6;
 
 // What LoopStatus cycles through when the repeat button is clicked.
 const LOOP_ORDER = ['None', 'Playlist', 'Track'];
@@ -679,6 +689,8 @@ const MediaCard = GObject.registerClass({
         this._coverUrl = null;
         this._coverApp = null;
         this._hasArtwork = false;
+        this._artAspect = null;
+        this._coverGeometry = null;
         this._lengthUs = 0;
         this._positionUs = 0;
         this._trackId = null;
@@ -704,8 +716,9 @@ const MediaCard = GObject.registerClass({
         this.add_child(this._topRow);
 
         this._cover = new St.Icon({
-            style_class: 'np-cover',
             icon_size: COVER_SIZE,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
         });
 
         // Which player a row belongs to is not obvious from album art alone,
@@ -716,7 +729,14 @@ const MediaCard = GObject.registerClass({
             visible: false,
         });
 
-        const coverBin = new St.Widget({layout_manager: new Clutter.BinLayout()});
+        // The tile is the square the cover occupies and the icon inside it is
+        // the picture, which is not always square: keeping them apart is what
+        // lets a video thumbnail stay a video thumbnail.
+        const coverBin = new St.Widget({
+            style_class: 'np-cover',
+            layout_manager: new Clutter.BinLayout(),
+        });
+        this._coverTile = coverBin;
         coverBin.add_child(this._cover);
         coverBin.add_child(this._badge);
 
@@ -742,8 +762,8 @@ const MediaCard = GObject.registerClass({
         this.connect('notify::mapped', () => this._syncCover());
 
         // Both squares move the corner the badge rides on.
-        this._cover.connect('notify::width', () => this._placeBadge());
-        this._cover.connect('notify::height', () => this._placeBadge());
+        this._coverTile.connect('notify::width', () => this._placeBadge());
+        this._coverTile.connect('notify::height', () => this._placeBadge());
         this._badge.connect('notify::width', () => this._placeBadge());
 
         this._headerRow = new St.BoxLayout({
@@ -1016,8 +1036,10 @@ const MediaCard = GObject.registerClass({
             this._coverApp = app;
             const artwork = this._artworkIcon(coverUrl);
             this._hasArtwork = artwork !== null;
-            this._cover.gicon = artwork ?? this._fallbackIcon(app);
+            this._artAspect = artwork?.aspect ?? null;
+            this._cover.gicon = artwork?.gicon ?? this._fallbackIcon(app);
             this._badge.gicon = app?.get_icon() ?? null;
+            this._syncCover();
         }
 
         this._playButton.child.icon_name = this.playing
@@ -1119,15 +1141,72 @@ const MediaCard = GObject.registerClass({
     // Null when the player named no usable artwork. Players inside a sandbox
     // point at files that only exist in their own filesystem, so a local file
     // is checked before it is used.
+    // The icon to draw and the shape it came in, or null when the track brings
+    // no artwork at all. Artwork reaches us three ways: a path on disk, a URL
+    // to fetch, or the picture itself inline, which is what Telegram sends.
     _artworkIcon(coverUrl) {
         if (!coverUrl)
             return null;
 
+        if (coverUrl.startsWith('data:'))
+            return this._inlineArtwork(coverUrl);
+
         const file = Gio.File.new_for_uri(coverUrl);
-        if (file.has_uri_scheme('file') && !file.query_exists(null))
+        if (file.has_uri_scheme('file')) {
+            if (!file.query_exists(null))
+                return null;
+            return {
+                gicon: new Gio.FileIcon({file}),
+                aspect: this._fileAspect(file.get_path()),
+            };
+        }
+
+        // Measuring artwork that lives on a server would mean fetching it
+        // twice, so the box stays square until it arrives, which is the shape
+        // streaming services send anyway.
+        return {gicon: new Gio.FileIcon({file}), aspect: null};
+    }
+
+    // Header only: the picture is not decoded to be measured.
+    _fileAspect(path) {
+        if (!path)
             return null;
 
-        return new Gio.FileIcon({file});
+        const [, width, height] = GdkPixbuf.Pixbuf.get_file_info(path);
+        return width > 0 && height > 0 ? width / height : null;
+    }
+
+    // data:[<mediatype>][;base64],<payload>. GIO opens no such file, so the
+    // bytes are decoded here and handed over as an icon of their own.
+    _inlineArtwork(coverUrl) {
+        const comma = coverUrl.indexOf(',');
+        if (comma < 0)
+            return null;
+
+        const header = coverUrl.slice(0, comma);
+        const payload = coverUrl.slice(comma + 1);
+
+        let bytes;
+        try {
+            bytes = new GLib.Bytes(header.endsWith(';base64')
+                ? GLib.base64_decode(payload)
+                : new TextEncoder().encode(decodeURIComponent(payload)));
+        } catch {
+            return null;
+        }
+
+        // Bytes that no loader recognises are not artwork: drawing them would
+        // leave an empty square where the player's own icon belongs.
+        let aspect = null;
+        try {
+            const pixbuf = GdkPixbuf.Pixbuf.new_from_stream(
+                Gio.MemoryInputStream.new_from_bytes(bytes), null);
+            aspect = pixbuf.get_width() / pixbuf.get_height();
+        } catch {
+            return null;
+        }
+
+        return {gicon: new Gio.BytesIcon({bytes}), aspect};
     }
 
     _fallbackIcon(app) {
@@ -1144,33 +1223,68 @@ const MediaCard = GObject.registerClass({
         return parts.join(' - ');
     }
 
-    // A square of art as tall as everything standing next to it. The size from
-    // the preferences is the floor and not the answer: a card showing a seek
-    // bar and the times is taller than any of the three sizes.
+    // Art as tall as everything standing next to it, in the shape it came in.
+    // The size from the preferences is the floor and not the answer: a card
+    // showing a seek bar and the times is taller than any of the three sizes.
     _syncCover() {
         if (!this._options || this._syncingCover)
             return;
-
-        const scale = scaleFactor();
-
-        if (this._compact) {
-            this._cover.icon_size = COMPACT_COVER_SIZE;
-            this._placeBadge();
-            return;
-        }
 
         // Asking a card that is not on the stage yet how tall it is walks a
         // style tree that does not exist. The map below brings us back.
         if (!this.get_stage())
             return;
 
+        const scale = scaleFactor();
         const beside = Math.round(this._column.height / scale);
-        const size = Math.max(this._options.coverSize, beside);
-        if (Math.abs(this._cover.icon_size - size) < 1)
+        let box;
+        if (this._compact)
+            box = COMPACT_COVER_SIZE;
+        else if (this._hasArtwork)
+            box = Math.max(this._options.coverSize, beside);
+        else
+            box = this._options.coverSize;
+
+        // A picture that is not square keeps its proportions inside that box
+        // instead of being pulled out to the corners of it.
+        let width = box;
+        let height = box;
+        if (this._hasArtwork && this._artAspect) {
+            const aspect = Math.min(Math.max(this._artAspect, MIN_ART_ASPECT),
+                MAX_ART_ASPECT);
+            if (aspect >= 1)
+                height = Math.round(box / aspect);
+            else
+                width = Math.round(box * aspect);
+        }
+
+        // Without artwork there is only the player's own icon to show, and an
+        // icon stretched to the height of a card is a poster, so it sits at a
+        // readable size in the middle of the tile instead.
+        const iconSize = this._hasArtwork
+            ? box
+            : Math.round(box * FALLBACK_ICON_RATIO);
+
+        // The sizes below are set in the pixels the actor is drawn in, so the
+        // scale factor belongs in what counts as unchanged: the same card on a
+        // display that switched to 200% needs the same box twice as large.
+        const geometry = `${width}x${height}:${iconSize}:${scale}`;
+        if (this._coverGeometry === geometry)
             return;
+        this._coverGeometry = geometry;
 
         this._syncingCover = true;
-        this._cover.icon_size = size;
+        this._cover.icon_size = iconSize;
+        // The icon fills the tile only when it holds artwork; the fallback is
+        // left at its own size and centered by the layout.
+        if (this._hasArtwork)
+            this._cover.set_size(width * scale, height * scale);
+        else
+            this._cover.set_size(-1, -1);
+        this._coverTile.set_size(width * scale, height * scale);
+        this._coverTile.remove_style_class_name('np-cover-empty');
+        if (!this._hasArtwork)
+            this._coverTile.add_style_class_name('np-cover-empty');
         this._syncingCover = false;
         this._placeBadge();
     }
@@ -1188,14 +1302,16 @@ const MediaCard = GObject.registerClass({
 
         const scale = scaleFactor();
 
-        // What the cover draws, not what it asked for: a card too narrow for
-        // the size in the preferences, or artwork with fewer pixels than that,
-        // both leave a smaller square on screen.
-        const art = Math.min(this._cover.width, this._cover.height,
-            this._cover.icon_size * scale);
-        const offset = (art - this._badge.width) / 2 - BADGE_INSET * scale;
-        this._badge.translation_x = offset;
-        this._badge.translation_y = offset;
+        // What the cover draws, not what it asked for: a card too narrow for the
+        // size in the preferences, or a picture wider than it is tall, both move
+        // the corner the badge belongs in, and a picture that is not square
+        // moves it by a different amount along each side.
+        const tile = this._coverTile;
+        const inset = BADGE_INSET * scale;
+        this._badge.translation_x =
+            (tile.width - this._badge.width) / 2 - inset;
+        this._badge.translation_y =
+            (tile.height - this._badge.height) / 2 - inset;
     }
 
     _metadataValue(key) {
