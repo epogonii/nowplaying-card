@@ -1,6 +1,6 @@
 # Now Playing Card
 
-![GNOME Shell 45 to 50](https://img.shields.io/badge/GNOME%20Shell-45%20%E2%80%93%2050-4a86cf)
+![GNOME Shell 45 to 50](https://img.shields.io/badge/GNOME%20Shell-45%20to%2050-4a86cf)
 ![License GPL-2.0-or-later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)
 
 A GNOME Shell extension that shows what is playing: an animated equalizer icon
@@ -17,8 +17,8 @@ GNOME Shell 45 or newer, on Wayland or X11. No other dependency; the tools in
 
 ## Features
 
-- Works with every MPRIS player — Spotify, browsers, VLC, Rhythmbox, mpv with
-  an MPRIS script — no matter how it is packaged (native, Flatpak, Snap).
+- Works with every MPRIS player - Spotify, browsers, VLC, Rhythmbox, mpv with
+  an MPRIS script - no matter how it is packaged (native, Flatpak, Snap).
 - Cover art from the player's metadata, with the application icon as a
   fallback when the artwork lives inside a sandbox the shell cannot read.
 - Seekable progress bar: drag it to jump, exact `SetPosition` where the player
@@ -29,7 +29,7 @@ GNOME Shell 45 or newer, on Wayland or X11. No other dependency; the tools in
 - Skip buttons appear only when the player says it can skip.
 - Long titles scroll sideways instead of being cut off, and a dimmed equalizer
   next to them shows the card that is playing.
-- Click the cover to switch to the player's window — the window itself, so a
+- Click the cover to switch to the player's window - the window itself, so a
   Flatpak player is raised instead of started a second time.
 - Several players share one popup as an accordion: the one that is playing is
   open, the rest are one-line rows, and clicking a row opens that one. The open
@@ -38,10 +38,12 @@ GNOME Shell 45 or newer, on Wayland or X11. No other dependency; the tools in
 - The playing player is kept at the top of the stack.
 - Lives either in a panel button of its own or inside the Quick Settings menu.
   In panel mode the button can also carry the transport buttons and the track
-  itself, answer the scroll wheel (tracks or volume) and the middle button —
+  itself, answer the scroll wheel (tracks or volume) and the middle button -
   a track can be changed without opening anything.
 - One popup width whatever the track is called, so nothing jumps between
   songs.
+- The top-bar icon can be there always, only while a player is running, or
+  never at all, in which case the card still opens from Quick Settings.
 - Follows the system light and dark theme, and switches with it.
 - Hides GNOME's own media controls in the notification list to avoid showing
   the same player twice; they come straight back when the extension is turned
@@ -73,7 +75,7 @@ While hacking on the extension, install with `tools/install-local.sh` instead:
 it renames every file into place rather than rewriting it. A shell that is
 still running the previous copy keeps `schemas/gschemas.compiled` memory-mapped,
 and overwriting those bytes underneath it leaves the process with a broken view
-of the schema — the next settings read then aborts the session.
+of the schema - the next settings read then aborts the session.
 
 ## Preferences
 
@@ -97,7 +99,7 @@ of the schema — the next settings read then aborts the session.
 | Scroll long text | Move a title sideways instead of cutting it off |
 | Animate the icon | Move the equalizer bars during playback |
 | Animate button presses | Dip the icon of a control when it is pressed |
-| Hide when nothing is playing | Drop the icon while no player is running |
+| Show in the top bar | Always, only while a player is running, or never |
 | Playing player first | Keep the card that is playing at the top |
 | Click the cover to switch to the player | Raise the player's window |
 | Hide the built-in media controls | Keep GNOME's own player out of the notification list |
@@ -109,7 +111,7 @@ of the schema — the next settings read then aborts the session.
 `stylesheet-light.css` or `stylesheet-dark.css` instead and reload them when the
 system switches between light and dark; both are generated from the base by
 `tools/gen-stylesheets.py`, which only replaces the colours on lines marked
-`/* np-var: NAME */`. Edit the base file and run the script — `install-local.sh`
+`/* np-var: NAME */`. Edit the base file and run the script - `install-local.sh`
 runs it too. Older shells find no variant and use the base.
 
 ## Supported versions
@@ -120,8 +122,8 @@ server: windows are found through Mutter and raised through the shell.
 ## Development
 
 `tools/nested/run-nested-three.sh` starts a nested headless GNOME Shell with
-three MPRIS stub players — one naming a `.desktop` file, one with no
-`DesktopEntry` at all, one with a window of its own — and a probe extension that
+three MPRIS stub players - one naming a `.desktop` file, one with no
+`DesktopEntry` at all, one with a window of its own - and a probe extension that
 logs the card state, both seek paths, the layout and accordion switches, the
 volume, repeat and shuffle writes, the panel text, wheel and middle click, the
 stylesheet variant, and the built-in-media restore. It touches nothing in the

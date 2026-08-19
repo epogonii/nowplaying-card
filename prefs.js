@@ -11,6 +11,7 @@ const PANEL_SCROLLS = ['none', 'track', 'volume'];
 const MIDDLE_CLICKS = ['none', 'play-pause', 'next'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
+const VISIBILITIES = ['always', 'active', 'never'];
 
 export default class NowPlayingPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
@@ -169,11 +170,18 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         const behavior = new Adw.PreferencesGroup({title: _('Behavior')});
         page.add(behavior);
 
-        const hideRow = new Adw.SwitchRow({
-            title: _('Hide when nothing is playing'),
-            subtitle: _('Remove the icon while no media player is running'),
+        const visibilityRow = new Adw.ComboRow({
+            title: _('Show in the top bar'),
+            subtitle: _('In Quick Settings mode, never still leaves the card there'),
+            model: new Gtk.StringList({
+                strings: [
+                    _('Always'),
+                    _('While a player is running'),
+                    _('Never'),
+                ],
+            }),
         });
-        behavior.add(hideRow);
+        behavior.add(visibilityRow);
 
         const sortRow = new Adw.SwitchRow({
             title: _('Playing player first'),
@@ -208,13 +216,13 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         this._bindEnum(settings, 'panel-middle-click', MIDDLE_CLICKS, middleRow);
         this._bindEnum(settings, 'card-layout', CARD_LAYOUTS, layoutRow);
         this._bindEnum(settings, 'cover-size', COVER_SIZES, coverRow);
+        this._bindEnum(settings, 'indicator-visibility', VISIBILITIES, visibilityRow);
         settings.bind('panel-index', indexRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-text-width', textWidthRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-progress', progressRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-volume', volumeRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-loop-shuffle', loopRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('scroll-text', scrollTextRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        settings.bind('hide-when-idle', hideRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('sort-playing-first', sortRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('raise-on-click', raiseRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('animate-icon', animateRow, 'active', Gio.SettingsBindFlags.DEFAULT);

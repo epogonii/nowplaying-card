@@ -17,6 +17,11 @@ function model() {
         .map(i => i._model).find(m => m) ?? null;
 }
 
+function qsIndicator() {
+    return Main.panel.statusArea.quickSettings._indicators.get_children()
+        .find(i => i._model) ?? null;
+}
+
 function cards() {
     const stack = model()?.stack;
     return stack ? [...stack._cards.values()] : [];
@@ -449,6 +454,35 @@ export default class ProbeQs extends Extension {
             stateObj()?._settings.set_string('card-layout', 'auto');
             stateObj()?._settings.set_strv('ignored-players', []);
             stateObj()?._settings.set_boolean('panel-text-fixed', false);
+        });
+
+        // Always, only while a player runs, or never at all. With players
+        // around only 'never' differs; the other two part company once the
+        // stubs are gone.
+        this._at(48, () => {
+            stateObj()?._settings.set_string('indicator-visibility', 'never');
+            log(`PROBE VIS never shouldShow=${model()?.shouldShow} ` +
+                `visible=${qsIndicator()?.visible} cards=${cards().length} ` +
+                `(expect false, false, 3)`);
+        });
+
+        this._at(50, () => {
+            stateObj()?._settings.set_string('indicator-visibility', 'active');
+            log(`PROBE VIS active shouldShow=${model()?.shouldShow} ` +
+                `visible=${qsIndicator()?.visible} (expect true, true)`);
+        });
+
+        this._at(92, () => {
+            stateObj()?._settings.set_string('indicator-visibility', 'always');
+            log(`PROBE VIS always shouldShow=${model()?.shouldShow} ` +
+                `visible=${qsIndicator()?.visible} cards=${cards().length} ` +
+                `(expect true, true, 0)`);
+        });
+
+        this._at(94, () => {
+            stateObj()?._settings.set_string('indicator-visibility', 'active');
+            log(`PROBE VIS active idle shouldShow=${model()?.shouldShow} ` +
+                `visible=${qsIndicator()?.visible} (expect false, false)`);
         });
 
         // Harness kills the stubs at t=90.

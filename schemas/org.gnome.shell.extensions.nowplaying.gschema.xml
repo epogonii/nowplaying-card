@@ -29,6 +29,11 @@
     <value value="1" nick="play-pause"/>
     <value value="2" nick="next"/>
   </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.indicator-visibility">
+    <value value="0" nick="always"/>
+    <value value="1" nick="active"/>
+    <value value="2" nick="never"/>
+  </enum>
   <enum id="org.gnome.shell.extensions.nowplaying.panel-text">
     <value value="0" nick="none"/>
     <value value="1" nick="title"/>
@@ -52,9 +57,10 @@
       <summary>Position in the panel area</summary>
       <description>Order of the button within the chosen panel area.</description>
     </key>
-    <key name="hide-when-idle" type="b">
-      <default>true</default>
-      <summary>Hide when no player is running</summary>
+    <key name="indicator-visibility" enum="org.gnome.shell.extensions.nowplaying.indicator-visibility">
+      <default>'active'</default>
+      <summary>Show in the top bar</summary>
+      <description>Always, only while a media player is running, or never. In the Quick Settings mode the card stays reachable there even with never.</description>
     </key>
     <key name="hide-builtin-media" type="b">
       <default>true</default>

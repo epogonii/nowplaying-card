@@ -1,8 +1,8 @@
 #!/bin/bash
 # Installs the extension into the live session. Every file lands under a
 # temporary name first and is then renamed into place: a rename swaps the inode
-# instead of rewriting bytes, so a shell that is running the old copy — and has
-# schemas/gschemas.compiled memory-mapped — keeps a consistent view until it is
+# instead of rewriting bytes, so a shell that is running the old copy - and has
+# schemas/gschemas.compiled memory-mapped - keeps a consistent view until it is
 # restarted. Overwriting those bytes in place corrupts that view, and a lookup
 # that then fails aborts the whole session.
 set -euo pipefail
@@ -32,4 +32,4 @@ glib-compile-schemas --targetdir "$src/schemas" "$src/schemas"
 install_file "$src/schemas/gschemas.compiled" "$dst/schemas/gschemas.compiled"
 
 echo "installed to $dst"
-echo "log out and back in — a running shell keeps the old code in memory"
+echo "log out and back in - a running shell keeps the old code in memory"

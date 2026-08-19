@@ -120,7 +120,7 @@ const DEFAULTS = {
     'location': 'panel',
     'panel-box': 'right',
     'panel-index': 0,
-    'hide-when-idle': true,
+    'indicator-visibility': 'active',
     'hide-builtin-media': true,
     'card-layout': 'auto',
     'animate-icon': true,
@@ -417,8 +417,8 @@ class ScrollingLabel extends St.Widget {
     }
 
     // One leg of the walk, and the next one only if this one took any time. A
-    // shell that decides not to animate — the popup was closed, the actor is
-    // off screen — finishes an ease inside the call that started it, and a
+    // shell that decides not to animate - the popup was closed, the actor is
+    // off screen - finishes an ease inside the call that started it, and a
     // chain that carried on from there would call itself until the stack ran
     // out. The walk then waits for the next map or relayout instead.
     _ease(props, next) {
@@ -960,7 +960,7 @@ const MediaCard = GObject.registerClass({
         const parts = [artists, typeof album === 'string' ? album : ''].filter(p => p);
         if (parts.length === 0)
             return this._player.app?.get_name() || '';
-        return parts.join(' — ');
+        return parts.join(' - ');
     }
 
     _metadataValue(key) {
@@ -1902,10 +1902,15 @@ class MediaModel {
         }
     }
 
-    // True when the host should show its panel button at all.
+    // True when the host should show its panel button at all. Hidden for good
+    // is a choice of its own: in Quick Settings the card stays where it is,
+    // only the icon beside the other indicators goes.
     get shouldShow() {
-        return this._shown.size > 0 ||
-            !readSetting(this._settings, 'hide-when-idle');
+        const visibility = readSetting(this._settings, 'indicator-visibility');
+        if (visibility === 'never')
+            return false;
+
+        return this._shown.size > 0 || visibility === 'always';
     }
 
     // The player the panel icon acts on: the one that is playing, or the
@@ -2167,7 +2172,7 @@ class NowPlayingButton extends PanelMenu.Button {
         if (mode === 'title')
             text = title;
         else if (mode === 'artist-title')
-            text = [artists, title].filter(part => part).join(' — ');
+            text = [artists, title].filter(part => part).join(' - ');
 
         this._panelLabel.text = text;
         this._panelLabel.maxWidth = readSetting(this._settings, 'panel-text-width');
@@ -2287,7 +2292,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::location', () => this._rebuild(),
             'changed::panel-box', () => this._rebuild(),
             'changed::panel-index', () => this._rebuild(),
-            'changed::hide-when-idle', () => this._host?._syncVisibility(),
+            'changed::indicator-visibility', () => this._host?._syncVisibility(),
             'changed::animate-icon', () => this._host?._model.sync(),
             'changed::animate-buttons', () => this._host?._model.sync(),
             'changed::card-layout', () => this._host?._model.sync(),
