@@ -16,7 +16,7 @@ jobs:
     env:
       ZIP: nowplaying@epogonii.github.io.shell-extension.zip
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install glib-compile-schemas
         run: |
