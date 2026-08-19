@@ -96,7 +96,7 @@ Include, please:
 
 ---
 
-## Support ☕
+## Support
 
 The extension is free and stays free. If it earned a coffee:
 
