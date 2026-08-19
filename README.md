@@ -32,7 +32,7 @@ Several players at once: the one playing keeps the open card, the rest wait as
 rows and open on a click.
 
 <p align="center">
-  <img src="docs/screenshots/stack.png" width="560" alt="Two players waiting as rows under the panel button">
+  <img src="docs/screenshots/stack.png" width="560" alt="Three players stacked, the playing one open and two rows">
 </p>
 
 The track and the transport in the panel itself:
