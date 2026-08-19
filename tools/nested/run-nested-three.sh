@@ -33,11 +33,17 @@ dbus-run-session -- bash -c '
     gjs $S/set-scale.js $NP_SCALE || echo "HARNESS scale failed"
     sleep 3
   fi
-  # flatpak-style: names a .desktop file, so the app icon can badge the cover
+  # flatpak-style: names a .desktop file, so the app icon can badge the cover.
+  # Its artwork is written after the track is announced, the way Firefox and
+  # Chrome do it, so the card has to come back for the picture on its own.
+  LATE_ART=$S/nested-home/cache/np-late-cover.png
+  mkdir -p $(dirname $LATE_ART)
+  rm -f $LATE_ART
   gjs $S/mprisstub5.js spotify spotify Spotify yes yes \
       "Scott Street From The Album Stranger In The Alps Deluxe Edition" \
-      file://$S/nested-home/np-cover-wide.png no yes yes &
+      file://$LATE_ART no yes yes &
   A=$!
+  ( sleep 2; cp $S/nested-home/np-cover-wide.png $LATE_ART ) &
   # chrome-style: no DesktopEntry at all, no artwork, cannot skip tracks
   gjs $S/mprisstub5.js chromium.instance7 none Chrome no no "White Noise" none no no no &
   B=$!

@@ -114,10 +114,12 @@ const COVER_SIZES = {
 // A picture that is not square is scaled until it covers the square the card
 // leaves for it and the rest runs past the edges, where the tile cuts it off.
 // Squeezing it into the square instead would bend everything in the frame.
-// Firefox writes its artwork file just after it announces the track, so the
-// first look at one can come up empty and is worth repeating.
-const ART_MEASURE_INTERVAL = 250;
-const ART_MEASURE_TRIES = 8;
+// Browsers announce a track before the file they point at is written: Firefox
+// fills its own directory a moment later, Chrome writes a temporary file. So a
+// local picture that is missing, or too unfinished to be measured, is looked
+// for again a few times before the card settles for the player's icon.
+const ART_RETRY_INTERVAL = 250;
+const ART_RETRIES = 12;
 // How much of the cover the player's own icon fills when a track brings no
 // artwork with it. All of it turns a logo into a poster.
 const FALLBACK_ICON_RATIO = 0.6;
@@ -696,8 +698,8 @@ const MediaCard = GObject.registerClass({
         this._coverApp = null;
         this._hasArtwork = false;
         this._artAspect = null;
-        this._artMeasureId = null;
-        this._artMeasureTries = 0;
+        this._artRetryId = null;
+        this._artRetryTries = 0;
         this._coverGeometry = null;
         this._lengthUs = 0;
         this._positionUs = 0;
@@ -1044,15 +1046,12 @@ const MediaCard = GObject.registerClass({
         if (coverUrl !== this._coverUrl || app !== this._coverApp) {
             this._coverUrl = coverUrl;
             this._coverApp = app;
-            const artwork = this._artworkIcon(coverUrl);
-            this._hasArtwork = artwork !== null;
-            this._artAspect = artwork?.aspect ?? null;
-            this._cover.gicon = artwork?.gicon ?? this._fallbackIcon(app);
             this._badge.gicon = app?.get_icon() ?? null;
-            this._syncCover();
-            this._stopArtMeasure();
-            if (artwork?.path && artwork.aspect === null)
-                this._startArtMeasure(artwork.path);
+            const artwork = this._artworkIcon(coverUrl);
+            this._applyArtwork(artwork);
+            this._stopArtRetry();
+            if (this._artworkPending(coverUrl, artwork))
+                this._startArtRetry(coverUrl);
         }
 
         this._playButton.child.icon_name = this.playing
@@ -1191,32 +1190,53 @@ const MediaCard = GObject.registerClass({
         return width > 0 && height > 0 ? width / height : null;
     }
 
-    // A player can announce a track before the file it points at is finished,
-    // and a picture nobody could measure yet would be cropped as a square. So
-    // the file is given a few more looks, and the box follows once one lands.
-    _startArtMeasure(path) {
-        this._artMeasureTries = 0;
-        this._artMeasureId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,
-            ART_MEASURE_INTERVAL, () => {
-                this._artMeasureTries++;
-                const aspect = this._fileAspect(path);
-                if (aspect === null &&
-                    this._artMeasureTries < ART_MEASURE_TRIES)
+    // Everything the artwork decides in one place, so a picture that turns up
+    // late lands the same way as one that was there from the start.
+    _applyArtwork(artwork) {
+        this._hasArtwork = artwork !== null;
+        this._artAspect = artwork?.aspect ?? null;
+        this._cover.gicon = artwork?.gicon ?? this._fallbackIcon(this._coverApp);
+        this._badge.visible = this._hasArtwork && !!this._badge.gicon;
+        this._syncCover();
+    }
+
+    // A file the player named but has not finished writing: either it is not
+    // there at all yet, or its header cannot be read, which would leave the
+    // card with the player's icon or a picture cropped as a square.
+    _artworkPending(coverUrl, artwork) {
+        if (!coverUrl?.startsWith('file://'))
+            return false;
+
+        return artwork === null || artwork.aspect === null;
+    }
+
+    // Another look, and another, until the picture is there and measured or
+    // the player has had long enough to write it.
+    _startArtRetry(coverUrl) {
+        this._artRetryTries = 0;
+        this._artRetryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,
+            ART_RETRY_INTERVAL, () => {
+                this._artRetryTries++;
+                const artwork = this._artworkIcon(coverUrl);
+
+                // A picture that arrived is worth showing even before it can
+                // be measured; one that was measured replaces the square guess.
+                if (artwork && (artwork.aspect !== null || !this._hasArtwork))
+                    this._applyArtwork(artwork);
+
+                if (this._artworkPending(coverUrl, artwork) &&
+                    this._artRetryTries < ART_RETRIES)
                     return GLib.SOURCE_CONTINUE;
 
-                this._artMeasureId = null;
-                if (aspect !== null) {
-                    this._artAspect = aspect;
-                    this._syncCover();
-                }
+                this._artRetryId = null;
                 return GLib.SOURCE_REMOVE;
             });
     }
 
-    _stopArtMeasure() {
-        if (this._artMeasureId) {
-            GLib.source_remove(this._artMeasureId);
-            this._artMeasureId = null;
+    _stopArtRetry() {
+        if (this._artRetryId) {
+            GLib.source_remove(this._artRetryId);
+            this._artRetryId = null;
         }
     }
 
@@ -1503,7 +1523,7 @@ const MediaCard = GObject.registerClass({
 
     _onDestroy() {
         this._stopPoll();
-        this._stopArtMeasure();
+        this._stopArtRetry();
         if (this._seekPendingId) {
             GLib.source_remove(this._seekPendingId);
             this._seekPendingId = null;
