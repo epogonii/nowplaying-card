@@ -27,9 +27,9 @@ MIN_HEIGHT = 0.16
 MAX_HEIGHT = 0.62
 CORNER = 0.22
 
-# GNOME blue, top to bottom.
-TOP = (0.30, 0.60, 0.92)
-BOTTOM = (0.08, 0.38, 0.73)
+# Indigo into violet, top to bottom.
+TOP = (0.36, 0.36, 0.96)
+BOTTOM = (0.56, 0.20, 0.78)
 
 # The pose of the still icon: the middle bar tallest, the outer two uneven.
 POSE = (0.55, 1.0, 0.72)
@@ -41,7 +41,7 @@ TURNS = (3, 4, 2)
 PHASES = (0, 2.1, 4.2)
 FPS = 20
 # Colours in the shared palette; one index above them stands for the corners.
-COLOURS = 64
+COLOURS = 200
 
 
 def rounded_rect(cr, x, y, width, height, radius):
