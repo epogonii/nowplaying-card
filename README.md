@@ -41,6 +41,15 @@ The track and the transport in the panel itself:
   <img src="docs/screenshots/panel.png" width="640" alt="The panel showing the equalizer, the track and transport buttons">
 </p>
 
+The icon walks around the colour wheel while a track plays, if you want it to:
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/equalizer-rainbow-dark.gif">
+    <img src="docs/equalizer-rainbow-light.gif" width="52" alt="Three equalizer bars cycling through colours">
+  </picture>
+</p>
+
 Or no button of its own, and the card at the bottom of Quick Settings:
 
 <p align="center">
