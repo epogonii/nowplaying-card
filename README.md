@@ -18,7 +18,11 @@
 
 Shows what is playing: an animated equalizer in the top panel and a media card
 with cover art, a seekable progress bar and transport controls for any MPRIS
-player. Nothing to configure to get going, nothing to install beside it.
+player.
+
+> [!TIP]
+> **Nothing to configure to get going, nothing to install beside it.**
+> Enable it and it picks up whatever is already playing.
 
 ## Screenshots
 

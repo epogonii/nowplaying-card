@@ -16,3 +16,6 @@ tools/nested/nested-home/data/gnome-shell/*
 !tools/nested/nested-home/data/gnome-shell/extensions/
 tools/nested/nested-home/data/gnome-shell/extensions/*
 !tools/nested/nested-home/data/gnome-shell/extensions/npprobe@test/
+
+# Left behind when a tool in tools/ gets imported.
+__pycache__/
