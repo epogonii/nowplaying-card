@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.1
+
+- The preferences come in three pages — Card, Panel and Players — rather than
+  one long scroll, and two combo entries got shorter names so they fit.
+- A track with no artist and no album leaves the second line out instead of
+  repeating the player's name, which the icon beside the cover already says.
+- The panel icon stays centred inside the plate drawn around it when a crowded
+  top bar hands the button less room than it asked for.
+- Disable leaves nothing behind: the equalizer and the card stack go down with
+  the model, both animations drop their frame handler when they stop, and the
+  card's geometry handlers go with the card.
+- The extensions.gnome.org page carries a Donate button, from the donation
+  links in `metadata.json`.
+- GNOME 51 is off the supported list until it is out.
+
 ## 1.0
 
 First release.
