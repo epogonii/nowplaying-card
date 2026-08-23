@@ -792,6 +792,10 @@ const MediaCard = GObject.registerClass({
         this._topRow.add_child(this._column);
         this._column.connectObject('notify::height',
             () => this._syncCover(), this);
+        // The cover gives room back to the column, so its width counts too: a
+        // card handed less room than it asked for needs a smaller tile.
+        this._topRow.connectObject('notify::width',
+            () => this._syncCover(), this);
         this.connect('notify::mapped', () => this._syncCover());
 
         // Both squares move the corner the badge rides on.
@@ -1331,7 +1335,7 @@ const MediaCard = GObject.registerClass({
         const beside = Math.round(this._column.height / scale);
         const box = this._compact
             ? COMPACT_COVER_SIZE
-            : Math.max(this._options.coverSize, beside);
+            : this._coverBox(beside, scale);
 
         // The tile is a square as tall as the card, and the picture covers it:
         // its shorter side matches the square, the longer one runs past the
@@ -1377,6 +1381,22 @@ const MediaCard = GObject.registerClass({
             this._coverTile.add_style_class_name('np-cover-empty');
         this._syncingCover = false;
         this._placeBadge();
+    }
+
+    // As tall as the column, but never so wide that the column is left with
+    // less than it asked for: a popup pins the card's width, and a row that
+    // runs past the padding puts the equalizer on the rounded corner. The size
+    // from the preferences stays the floor, the way it is for a narrow card.
+    _coverBox(beside, scale) {
+        const floor = this._options.coverSize;
+        const row = this._topRow.width;
+        if (row <= 0)
+            return Math.max(floor, beside);
+
+        const [columnMin] = this._column.get_preferred_width(-1);
+        const spacing = this._topRow.get_theme_node().get_length('spacing');
+        const room = Math.floor((row - columnMin - spacing) / scale);
+        return Math.max(floor, Math.min(beside, room));
     }
 
     // The app icon belongs in the bottom right corner of the cover, a step
