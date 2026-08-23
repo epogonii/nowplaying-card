@@ -112,12 +112,12 @@
       <summary>Show the progress bar</summary>
     </key>
     <key name="show-volume" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Show the volume slider</summary>
       <description>Only shown for players that report a volume of their own.</description>
     </key>
     <key name="show-loop-shuffle" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Show the shuffle and repeat buttons</summary>
       <description>Only shown for players that support them.</description>
     </key>
