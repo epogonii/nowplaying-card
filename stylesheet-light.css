@@ -176,8 +176,8 @@
 /* One width whatever the track: a popup that followed its own text would
    change size on every song. In Quick Settings the grid sets the width. */
 .np-menu .np-card {
-    min-width: 23em;
-    max-width: 23em;
+    min-width: 24em;
+    max-width: 24em;
 }
 
 .np-placeholder {
