@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.2
+
+- The volume slider and the shuffle and repeat buttons start out hidden. Both
+  only ever appear for players that carry them, and a card without them reads
+  better on a fresh install; the preferences turn them back on.
+- The card in its own popup is one em wider. A card showing the volume row and
+  the loop buttons needed more width than 23em left it, and the few pixels it
+  overran by put the equalizer in the top right corner on the card's rounded
+  edge.
+
 ## 1.0.1
 
 - The preferences come in three pages — Card, Panel and Players — rather than
