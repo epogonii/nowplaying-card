@@ -41,6 +41,7 @@ jobs:
           zip -r "$ZIP" \
             metadata.json extension.js prefs.js stylesheet.css \
             stylesheet-light.css stylesheet-dark.css LICENSE \
+            icons/qr/bitcoin.svg icons/qr/ethereum.svg icons/qr/solana.svg \
             schemas/org.gnome.shell.extensions.nowplaying.gschema.xml
 
       # The changelog section for this version becomes the release notes; if

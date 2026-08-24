@@ -23,16 +23,26 @@ const FEATURE_URL = 'https://github.com/epogonii/nowplaying-card/issues/new?labe
 const SPONSORS_URL = 'https://github.com/sponsors/epogonii';
 const PAYPAL_URL = 'https://www.paypal.com/paypalme/pogonii';
 const WALLETS = [
-    ['Bitcoin', '18KtJEw8gt2oyicszwMUkbAKMHHXS9nwKR'],
-    ['Ethereum', '0x4f2fb6a154526a72d612afa2e3a8129e30ca0996'],
-    ['Cardano', 'DdzFFzCqrhsmpnmUqivufj3TmDzksP4HKzcksRUNVr8xA4Gbj7PngV6TfkZuqUqeeKxp138t2Ftd1HypLFkUQ8F1hGtEmyhTP9VnZcUt'],
+    ['Bitcoin', 'bc1qe6fjj3uv23e2yx2ry3wwhyrl7s2pqshau7mga3'],
+    ['Ethereum', '0xDC9e1EfA0F8FAE71377F4018d4ff7D123369438e'],
+    ['Solana', '3sYQyR27CVz1VcwCfoDLUioaAHk8jspQaSDHXEvBALxg'],
 ];
+
+// Where tools/gen-qr.sh keeps the codes it draws for those addresses, and how
+// wide one of them is shown. They are drawn larger than that, so the picture is
+// scaled down rather than up and the modules stay square.
+const QR_DIR = 'icons/qr';
+const QR_SIZE = 168;
+
 const VISIBILITIES = ['always', 'active', 'never'];
 const IGNORED_KEY = 'ignored-players';
 
 export default class NowPlayingPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
+
+        // Kept for the toast the copy button raises.
+        this._window = window;
 
         // Four pages rather than one long scroll: what the card looks like,
         // where the button lives, which players get one at all, and where the
@@ -392,23 +402,70 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             _('Monthly or one time'), SPONSORS_URL));
         group.add(this._linkRow(_('PayPal'), PAYPAL_URL, PAYPAL_URL));
 
-        for (const [name, address] of WALLETS) {
-            const row = new Adw.ActionRow({
-                title: name,
-                subtitle: address,
-                subtitle_selectable: true,
-            });
+        this._addWallets(group);
+    }
 
-            const copy = new Gtk.Button({
-                icon_name: 'edit-copy-symbolic',
-                tooltip_text: _('Copy the address'),
-                valign: Gtk.Align.CENTER,
-                css_classes: ['flat'],
-            });
-            copy.connect('clicked', () => this._copy(address));
-            row.add_suffix(copy);
-            group.add(row);
-        }
+    // The wallets, one at a time: the network to send on, the address it
+    // belongs to, and the code to point a phone at instead of typing it out.
+    // The codes are drawn by tools/gen-qr.sh and ship as files - an encoder
+    // written in here would be a few hundred lines of arithmetic in front of
+    // anybody reviewing the extension, and a wrong module in a QR code is money
+    // sent nowhere.
+    _addWallets(group) {
+        const networks = new Gtk.StringList();
+        for (const [name] of WALLETS)
+            networks.append(name);
+
+        const network = new Adw.ComboRow({
+            title: _('Cryptocurrency'),
+            model: networks,
+        });
+        group.add(network);
+
+        const address = new Adw.ActionRow({
+            title: _('Address'),
+            subtitle_selectable: true,
+            subtitle_lines: 0,
+        });
+        const copy = new Gtk.Button({
+            icon_name: 'edit-copy-symbolic',
+            tooltip_text: _('Copy the address'),
+            valign: Gtk.Align.CENTER,
+            css_classes: ['flat'],
+        });
+        address.add_suffix(copy);
+        group.add(address);
+
+        const code = new Gtk.Picture({
+            halign: Gtk.Align.CENTER,
+            margin_top: 12,
+            width_request: QR_SIZE,
+            height_request: QR_SIZE,
+        });
+        group.add(code);
+
+        const chosen = () => WALLETS[network.selected] ?? WALLETS[0];
+
+        const show = () => {
+            const [name, wallet] = chosen();
+            const file = `${name.toLowerCase().replaceAll(' ', '-')}.svg`;
+            address.subtitle = wallet;
+            code.file = Gio.File.new_for_path(`${this.path}/${QR_DIR}/${file}`);
+            code.alternative_text =
+                _('The %s address as a QR code').format(name);
+        };
+        network.connect('notify::selected', show);
+        show();
+
+        copy.connect('clicked', () => {
+            const [name, wallet] = chosen();
+            this._copy(wallet);
+            this._toast(_('%s address copied').format(name));
+        });
+    }
+
+    _toast(message) {
+        this._window?.add_toast?.(new Adw.Toast({title: message, timeout: 6}));
     }
 
     _copy(text) {

@@ -11,7 +11,7 @@ uuid=nowplaying@epogonii.github.io
 src=$(cd "$(dirname "$0")/.." && pwd)
 dst=${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$uuid
 
-mkdir -p "$dst/schemas"
+mkdir -p "$dst/schemas" "$dst/icons/qr"
 
 install_file() {
     local from=$1 to=$2
@@ -29,6 +29,11 @@ for f in metadata.json extension.js prefs.js stylesheet.css \
 done
 install_file "$src/schemas/org.gnome.shell.extensions.nowplaying.gschema.xml" \
     "$dst/schemas/org.gnome.shell.extensions.nowplaying.gschema.xml"
+
+# The QR codes the About page shows, drawn by tools/gen-qr.sh.
+for f in "$src"/icons/qr/*.svg; do
+    install_file "$f" "$dst/icons/qr/$(basename "$f")"
+done
 
 glib-compile-schemas --targetdir "$src/schemas" "$src/schemas"
 install_file "$src/schemas/gschemas.compiled" "$dst/schemas/gschemas.compiled"
