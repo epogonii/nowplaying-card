@@ -17,6 +17,11 @@ import System from 'system';
 Gio.resources_register(Gio.Resource.load(
     '/usr/share/gnome-shell/org.gnome.Shell.Extensions.src.gresource'));
 
+// The real preferences run in a process that started with imports.package.init,
+// and that is what puts format() on String. Without it a translated string with
+// a placeholder in it throws here and nowhere else.
+String.prototype.format = imports.format.format;
+
 const RESOURCE = 'resource:///org/gnome/Shell/Extensions/js';
 
 const here = GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]);
