@@ -17,6 +17,9 @@ const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
 const EQUALIZER_STYLES = ['bars', 'rounded', 'rainbow'];
 
+const PROJECT_URL = 'https://github.com/epogonii/nowplaying-card';
+const ISSUES_URL = 'https://github.com/epogonii/nowplaying-card/issues';
+const FEATURE_URL = 'https://github.com/epogonii/nowplaying-card/issues/new?labels=enhancement';
 const SPONSORS_URL = 'https://github.com/sponsors/epogonii';
 const PAYPAL_URL = 'https://www.paypal.com/paypalme/pogonii';
 const WALLETS = [
@@ -31,8 +34,9 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
 
-        // Three pages rather than one long scroll: what the card looks like,
-        // where the button lives, and which players get one at all.
+        // Four pages rather than one long scroll: what the card looks like,
+        // where the button lives, which players get one at all, and where the
+        // extension came from.
         const cardPage = new Adw.PreferencesPage({
             title: _('Card'),
             icon_name: 'audio-x-generic-symbolic',
@@ -50,6 +54,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             icon_name: 'multimedia-player-symbolic',
         });
         window.add(playersPage);
+
+        const aboutPage = new Adw.PreferencesPage({
+            title: _('About'),
+            icon_name: 'help-about-symbolic',
+        });
+        window.add(aboutPage);
 
         const placement = new Adw.PreferencesGroup({title: _('Placement')});
         panelPage.add(placement);
@@ -266,7 +276,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         addPlayer.connect('clicked', () => this._pickPlayer(window, settings));
         players.set_header_suffix(addPlayer);
 
-        this._addSupportGroup(playersPage);
+        this._fillAboutPage(aboutPage);
 
         this._bindEnum(settings, 'location', LOCATIONS, locationRow);
         this._bindEnum(settings, 'panel-box', PANEL_BOXES, boxRow);
@@ -308,8 +318,69 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         syncSensitivity();
     }
 
-    // Nothing to do with the extension working; a place to say thanks from,
-    // and nothing here asks for anything.
+    // Where the extension came from, and a place to say thanks from. Nothing
+    // on this page has anything to do with the extension working.
+    _fillAboutPage(page) {
+        const about = new Adw.PreferencesGroup({
+            title: this.metadata.name,
+            description: _('Whatever is playing, from the top bar'),
+        });
+        page.add(about);
+        about.add(this._linkRow(_('Project page'), PROJECT_URL, PROJECT_URL));
+
+        // Both halves of an issue as two buttons rather than two more rows,
+        // because they are the two things somebody on this page came to do. A
+        // group takes any widget, so they go in as they are.
+        const buttons = new Gtk.Box({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            homogeneous: true,
+            halign: Gtk.Align.CENTER,
+            spacing: 12,
+            margin_top: 18,
+        });
+        buttons.append(this._pill(_('Report a problem'), ISSUES_URL));
+        buttons.append(this._pill(_('Request a feature'), FEATURE_URL));
+        about.add(buttons);
+
+        about.add(new Gtk.Label({
+            label: _('Something it does wrong, or something it does not do yet - either one belongs in an issue.'),
+            justify: Gtk.Justification.CENTER,
+            wrap: true,
+            max_width_chars: 44,
+            margin_top: 12,
+            css_classes: ['dim-label', 'caption'],
+        }));
+
+        this._addSupportGroup(page);
+
+        const footer = new Adw.PreferencesGroup();
+        page.add(footer);
+        footer.add(new Gtk.Label({
+            label: `· ${this.metadata.name} ${this.metadata['version-name'] ?? ''} ·`,
+            justify: Gtk.Justification.CENTER,
+            margin_top: 6,
+            css_classes: ['dim-label', 'caption'],
+        }));
+    }
+
+    // A row that opens something in a browser.
+    _linkRow(title, subtitle, url) {
+        const row = new Adw.ActionRow({title, subtitle, activatable: true});
+        row.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
+        row.connect('activated', () =>
+            Gio.AppInfo.launch_default_for_uri(url, null));
+        return row;
+    }
+
+    // A rounded button that opens something in a browser.
+    _pill(label, url) {
+        const button = new Gtk.Button({label, css_classes: ['pill']});
+        button.connect('clicked', () =>
+            Gio.AppInfo.launch_default_for_uri(url, null));
+        return button;
+    }
+
+    // Nothing here asks for anything.
     _addSupportGroup(page) {
         const group = new Adw.PreferencesGroup({
             title: _('Support'),
@@ -317,22 +388,9 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         page.add(group);
 
-        const links = [
-            [_('GitHub Sponsors'), _('Monthly or one time'), SPONSORS_URL],
-            [_('PayPal'), PAYPAL_URL, PAYPAL_URL],
-        ];
-
-        for (const [title, subtitle, url] of links) {
-            const row = new Adw.ActionRow({
-                title,
-                subtitle,
-                activatable: true,
-            });
-            row.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
-            row.connect('activated', () =>
-                Gio.AppInfo.launch_default_for_uri(url, null));
-            group.add(row);
-        }
+        group.add(this._linkRow(_('GitHub Sponsors'),
+            _('Monthly or one time'), SPONSORS_URL));
+        group.add(this._linkRow(_('PayPal'), PAYPAL_URL, PAYPAL_URL));
 
         for (const [name, address] of WALLETS) {
             const row = new Adw.ActionRow({
