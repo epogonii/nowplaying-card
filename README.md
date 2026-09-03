@@ -139,7 +139,7 @@ Preferences apply immediately.
 
 `gnome-extensions prefs nowplaying@epogonii.github.io`
 
-Three pages, in the order the window shows them.
+Four pages, in the order the window shows them.
 
 ### Card
 
@@ -176,6 +176,11 @@ Three pages, in the order the window shows them.
 | --- | --- |
 | Hide the built-in media controls | Keep GNOME's own player out of the notification list |
 | Ignored players | Picked from the installed apps, or typed by hand |
+
+### About
+
+No settings. Buttons to report a problem or request a feature, the links from
+[Support](#support), and the installed version.
 
 ---
 

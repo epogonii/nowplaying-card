@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import Adw from 'gi://Adw';
-import Gdk from 'gi://Gdk';
+import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
@@ -452,7 +452,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             address.subtitle = wallet;
             code.file = Gio.File.new_for_path(`${this.path}/${QR_DIR}/${file}`);
             code.alternative_text =
-                _('The %s address as a QR code').format(name);
+                _('The %s address as a QR code').replace('%s', () => name);
         };
         network.connect('notify::selected', show);
         show();
@@ -460,7 +460,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         copy.connect('clicked', () => {
             const [name, wallet] = chosen();
             this._copy(wallet);
-            this._toast(_('%s address copied').format(name));
+            this._toast(_('%s address copied').replace('%s', () => name));
         });
     }
 

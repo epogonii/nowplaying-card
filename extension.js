@@ -76,6 +76,10 @@ const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(`
   </interface>
 </node>`);
 
+// How much of an inline (data: URL) cover is fed to the loader at a time while
+// it looks for the image header. Large enough that a JPEG carrying an EXIF
+// thumbnail still reports its size from the first chunk.
+const INLINE_ART_CHUNK = 64 * 1024;
 const COVER_SIZE = 48;
 const COMPACT_COVER_SIZE = 40;
 const CONTROL_ICON_SIZE = 20;
@@ -1286,17 +1290,37 @@ const MediaCard = GObject.registerClass({
         }
 
         // Bytes that no loader recognises are not artwork: drawing them would
-        // leave an empty square where the player's own icon belongs.
-        let aspect = null;
+        // leave an empty square where the player's own icon belongs. The
+        // loader is fed only until it has seen the header, which is all the
+        // aspect needs: decoding a whole image here would stall the shell,
+        // and St decodes it anyway when the icon is drawn.
+        let width = 0;
+        let height = 0;
+        const loader = new GdkPixbuf.PixbufLoader();
+        loader.connect('size-prepared', (_loader, w, h) => {
+            width = w;
+            height = h;
+        });
         try {
-            const pixbuf = GdkPixbuf.Pixbuf.new_from_stream(
-                Gio.MemoryInputStream.new_from_bytes(bytes), null);
-            aspect = pixbuf.get_width() / pixbuf.get_height();
+            const size = bytes.get_size();
+            for (let offset = 0; offset < size && width === 0; offset += INLINE_ART_CHUNK) {
+                const length = Math.min(INLINE_ART_CHUNK, size - offset);
+                loader.write_bytes(GLib.Bytes.new_from_bytes(bytes, offset, length));
+            }
         } catch {
-            return null;
+            width = 0;
         }
+        try {
+            loader.close();
+        } catch {
+            // Closing a loader that has only seen a header is an error by
+            // design; the size has already been reported by then. SVG is the
+            // exception: it reports its size only here, on close.
+        }
+        if (width <= 0 || height <= 0)
+            return null;
 
-        return {gicon: new Gio.BytesIcon({bytes}), aspect, path: null};
+        return {gicon: new Gio.BytesIcon({bytes}), aspect: width / height, path: null};
     }
 
     _fallbackIcon(app) {
@@ -2002,6 +2026,9 @@ class MprisPlayer extends Signals.EventEmitter {
     // then both proxies start out with an empty property cache. Nothing tells
     // us when the objects appear, so the properties are asked for again.
     _ensureProperties() {
+        // A proxy that failed after close() still lands here.
+        if (this._closed)
+            return;
         const missing = [];
         if (!this._hasProperty(this._mprisProxy, 'Identity'))
             missing.push([this._mprisProxy, MPRIS_IFACE]);
@@ -2198,8 +2225,9 @@ class MprisPlayer extends Signals.EventEmitter {
 
     _update() {
         const metadata = {};
-        for (const key in this._playerProxy?.Metadata ?? {})
-            metadata[key] = this._playerProxy.Metadata[key].deepUnpack();
+        const raw = this._playerProxy?.Metadata ?? {};
+        for (const key in raw)
+            metadata[key] = raw[key].deepUnpack();
         this._metadata = metadata;
 
         // Players are known to send metadata that does not match the spec, so

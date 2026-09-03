@@ -20,18 +20,6 @@
     box-shadow: none;
 }
 
-.np-header {
-    border-radius: 12px;
-    border: none;
-    box-shadow: none;
-    background: none;
-    padding: 0;
-}
-
-.np-header:hover .np-title, .np-header:focus .np-title {
-    text-decoration: underline;
-}
-
 .np-header-box {
     spacing: 8px;
 }
