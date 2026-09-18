@@ -24,7 +24,11 @@ let virtualPointer = null;
 
 function pointer() {
     if (virtualPointer === null) {
-        virtualPointer = Clutter.get_default_backend().get_default_seat()
+        // Clutter.get_default_backend() is gone in GNOME 51; the backend
+        // comes off the stage's context there.
+        const backend = Clutter.get_default_backend?.() ??
+            global.stage.context.get_backend();
+        virtualPointer = backend.get_default_seat()
             .create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
     }
     return virtualPointer;

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.3
+
+- GNOME Shell 51 is back on the supported list, now that it is out. The card
+  needed nothing for it: the quick settings menu's `open()` and `close()` take
+  an options object there, and the card closes the menu with no arguments, and
+  which of the two spellings of a box's axis to use has been read off the shell
+  version since 48.
+- The nested test stand runs on 51 as well. `Clutter.get_default_backend()` is
+  gone there, so the probe's virtual pointer takes the backend off the stage's
+  context when the old call is not around.
+
 ## 1.0.2
 
 - The volume slider and the shuffle and repeat buttons start out hidden. Both
