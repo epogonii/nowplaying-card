@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://extensions.gnome.org/extension/10736/now-playing-card/"><img alt="Get it on extensions.gnome.org" src="https://img.shields.io/badge/extensions.gnome.org-get%20it-4a86cf?logo=gnome&logoColor=white"></a>
   <img alt="GNOME Shell 45 to 51" src="https://img.shields.io/badge/GNOME%20Shell-45%20to%2051-5c5cf5?logo=gnome&logoColor=white">
   <img alt="License GPL-2.0-or-later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-8f33c7">
   <a href="https://github.com/sponsors/epogonii"><img alt="Sponsor" src="https://img.shields.io/badge/sponsor-GitHub-ea4aaa?logo=githubsponsors&logoColor=white"></a>
@@ -97,6 +98,9 @@ Preferences:
 - Follows the system light and dark theme and switches with it
 - Hides GNOME's own media controls while it runs, and gives them straight back
   when it stops
+
+A longer write-up, with the two D-Bus details that took most of the work:
+[Now Playing Card: a GNOME Shell media card for any MPRIS player](https://thelinuxnotes.com/now-playing-card-gnome-shell-mpris-media-extension/).
 
 ---
 
