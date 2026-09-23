@@ -1,0 +1,29 @@
+{
+  "spec_version": "2026-04-02",
+  "known": [
+    {
+      "rule_id": "EGO-L-003",
+      "paths": [
+        "extension.js"
+      ],
+      "snippets": [
+        "            this._frameId = this._timeline.connect('new-frame',\n                () => this._onFrame())",
+        "        loader.connect('size-prepared', (_loader, w, h) => {\n            width = w;\n            height = h;\n        })",
+        "        this._frameId = this._timeline.connect('new-frame',\n            () => this._onFrame())"
+      ]
+    },
+    {
+      "rule_id": "EGO-L-004",
+      "paths": [
+        "extension.js"
+      ],
+      "snippets": [
+        "        this._artRetryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,\n            ART_RETRY_INTERVAL, () => {\n                this._artRetryTries++;\n                const artwork = this._artworkIcon(coverUrl);\n\n                // A picture that arrived is worth showing even before it can\n              ",
+        "        this._pollId = GLib.timeout_add(GLib.PRIORITY_LOW, delayMs, () => {\n            this._pollId = null;\n            this._fetchPosition();\n            this._updatePoll();\n            return GLib.SOURCE_REMOVE;\n        })",
+        "        this._retryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PROPERTY_RETRY_MS,\n            () => {\n                this._retryId = null;\n                missing.forEach(([proxy, iface]) => this._fetchProperties(proxy, iface));\n                return GLib.SOURCE_REMOVE;\n            })",
+        "        this._seekPendingId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,\n            SEEK_COALESCE_MS, () => {\n                this._seekPendingId = null;\n                this._seekToSlider();\n                return GLib.SOURCE_REMOVE;\n            })",
+        "        this._volumePendingId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,\n            VOLUME_COALESCE_MS, () => {\n                this._volumePendingId = null;\n                this._pushVolume();\n                return GLib.SOURCE_REMOVE;\n            })"
+      ]
+    }
+  ]
+}
