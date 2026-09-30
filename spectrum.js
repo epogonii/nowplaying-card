@@ -234,22 +234,24 @@ function listen(pipeline) {
 
     const bus = pipeline.get_bus();
     bus.add_signal_watch();
-    bus.connect('message::error', (_bus, message) => {
+    const errorId = bus.connect('message::error', (_bus, message) => {
         const [error] = message.parse_error();
         printerr(error.message);
         stop(1);
     });
-    bus.connect('message::eos', () => stop(1));
+    const eosId = bus.connect('message::eos', () => stop(1));
 
     // The shell never writes to stdin; it only closes it, or dies.
-    GLib.io_add_watch(GLib.IOChannel.unix_new(0), GLib.PRIORITY_DEFAULT,
+    const stdin = GLib.IOChannel.unix_new(0);
+    let stdinId = GLib.io_add_watch(stdin, GLib.PRIORITY_DEFAULT,
         GLib.IOCondition.IN | GLib.IOCondition.HUP | GLib.IOCondition.ERR,
         () => {
+            stdinId = 0;
             stop(0);
             return GLib.SOURCE_REMOVE;
         });
 
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, TICK_MS, () => {
+    const tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TICK_MS, () => {
         let fresh = false;
         for (;;) {
             const sample = sink.emit('try-pull-sample', 0);
@@ -271,6 +273,13 @@ function listen(pipeline) {
     pipeline.set_state(Gst.State.PLAYING);
     loop.run();
     pipeline.set_state(Gst.State.NULL);
+
+    GLib.source_remove(tickId);
+    if (stdinId)
+        GLib.source_remove(stdinId);
+    bus.disconnect(errorId);
+    bus.disconnect(eosId);
+    bus.remove_signal_watch();
     return status;
 }
 
