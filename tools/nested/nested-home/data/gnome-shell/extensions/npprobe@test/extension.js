@@ -21,17 +21,27 @@ function model() {
 // entirely, which is exactly where a panel button and the buttons inside it
 // fight over a press, so the clicks here go in through the seat.
 let virtualPointer = null;
+let virtualKeyboard = null;
+
+function seat() {
+    // Clutter.get_default_backend() is gone in GNOME 51; the backend
+    // comes off the stage's context there.
+    const backend = Clutter.get_default_backend?.() ??
+        global.stage.context.get_backend();
+    return backend.get_default_seat();
+}
 
 function pointer() {
-    if (virtualPointer === null) {
-        // Clutter.get_default_backend() is gone in GNOME 51; the backend
-        // comes off the stage's context there.
-        const backend = Clutter.get_default_backend?.() ??
-            global.stage.context.get_backend();
-        virtualPointer = backend.get_default_seat()
-            .create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
-    }
+    if (virtualPointer === null)
+        virtualPointer = seat().create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
     return virtualPointer;
+}
+
+function pressKey(keyval) {
+    if (virtualKeyboard === null)
+        virtualKeyboard = seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+    virtualKeyboard.notify_keyval(GLib.get_monotonic_time(), keyval, Clutter.KeyState.PRESSED);
+    virtualKeyboard.notify_keyval(GLib.get_monotonic_time(), keyval, Clutter.KeyState.RELEASED);
 }
 
 function clickAt(actor, button = Clutter.BUTTON_PRIMARY) {
@@ -671,6 +681,60 @@ export default class ProbeQs extends Extension {
         this._at(52.5, () => log(`PROBE REALSCROLL up menuOpen=${panelButton()?.menu.isOpen} ` +
             `(expect false, and a Previous in the stub log)`));
 
+        // panel-icon off: text alone, and a press on it still opens the menu.
+        const edges = tag => {
+            const btn = panelButton();
+            const eq = btn?._model.equalizer;
+            const label = btn?._panelLabel;
+            const x = actor => actor.get_transformed_position()[0] -
+                btn.get_transformed_position()[0];
+            const left = Math.round(x(eq.visible ? eq : label));
+            const right = Math.round(btn.width - x(label) - label.width);
+            const node = label._label.get_theme_node();
+            log(`PROBE NOICON ${tag} eq=${eq?.visible} mapped=${eq?.mapped} ` +
+                `timeline=${eq?._timeline !== null} label=${label?.visible} ` +
+                `btnW=${Math.round(btn.width)} left=${left} right=${right} ` +
+                `pad=${node.get_padding(St.Side.LEFT)}/${node.get_padding(St.Side.RIGHT)}`);
+        };
+        this._at(52.8, () => edges('with icon (expect pad=0/2)'));
+        this._at(53, () => stateObj()?._settings.set_boolean('panel-icon', false));
+        this._at(53.3, () => {
+            edges('text only (expect eq=false, mapped=false, label=true, pad=2/2)');
+            clickAt(panelButton()._panelLabel);
+        });
+        this._at(53.6, () => {
+            log(`PROBE NOICON press on text menuOpen=${panelButton()?.menu.isOpen} (expect true)`);
+            panelButton()?.menu.close();
+            stateObj()?._settings.set_string('panel-text', 'none');
+            const btn = panelButton();
+            log(`PROBE NOICON no text eq=${btn?._model.equalizer.visible} ` +
+                `timeline=${btn?._model.equalizer._timeline !== null} ` +
+                `label=${btn?._panelLabel.visible} (expect true, true, false)`);
+        });
+        // The spectrum can bring a text of its own, and takes it away again.
+        this._at(53.7, () => {
+            const btn = panelButton();
+            stateObj()?._settings.set_string('spectrum-text', 'title');
+            stateObj()?._settings.set_boolean('show-spectrum', true);
+            log(`PROBE SPECTRUMTEXT on text="${btn?._panelLabel.text}" ` +
+                `visible=${btn?._panelLabel.visible} eq=${btn?._model.equalizer.visible} ` +
+                `(expect "${btn?._model.activePlayer?.trackTitle}", true, true)`);
+            stateObj()?._settings.set_boolean('show-spectrum', false);
+            log(`PROBE SPECTRUMTEXT off visible=${btn?._panelLabel.visible} ` +
+                `eq=${btn?._model.equalizer.visible} (expect false, true)`);
+            stateObj()?._settings.set_string('panel-text', 'title');
+            stateObj()?._settings.set_boolean('show-spectrum', true);
+            stateObj()?._settings.set_string('spectrum-text', 'panel');
+            log(`PROBE SPECTRUMTEXT panel eq=${btn?._model.equalizer.visible} (expect false)`);
+            stateObj()?._settings.set_boolean('show-spectrum', false);
+            stateObj()?._settings.set_string('panel-text', 'none');
+        });
+        this._at(53.8, () => {
+            stateObj()?._settings.set_boolean('panel-icon', true);
+            stateObj()?._settings.set_string('panel-text', 'artist-title');
+        });
+        this._at(53.9, () => edges('back (expect eq=true, timeline=true, pad=0/2)'));
+
         this._at(54, () => {
             stateObj()?._settings.set_string('location', 'quick-settings');
             stateObj()?._settings.set_string('panel-text', 'none');
@@ -776,17 +840,36 @@ export default class ProbeQs extends Extension {
 
         // Three ways to draw the bars. Each one gets a couple of seconds of
         // painting to itself, so a repaint that throws lands in the log
-        // between two of these lines and not after the last of them.
-        const styleStep = (at, style, expect) => this._at(at, () => {
-            stateObj()?._settings.set_string('equalizer-style', style);
-            const eq = model()?.equalizer;
-            log(`PROBE STYLE ${style} icon=${eq?.iconStyle} ` +
-                `w=${eq?.get_width()} timeline=${eq?._timeline !== null} ` +
-                `(expect ${expect})`);
-        });
+        // between two of these lines and not after the last of them. The
+        // width is read once the new style has been laid out.
+        const styleStep = (at, style, expect) => {
+            this._at(at, () => stateObj()?._settings.set_string('equalizer-style', style));
+            this._at(at + 0.3, () => {
+                const eq = model()?.equalizer;
+                log(`PROBE STYLE ${style} icon=${eq?.iconStyle} ` +
+                    `w=${eq?.get_width()} timeline=${eq?._timeline !== null} ` +
+                    `(expect ${expect})`);
+            });
+        };
         styleStep(70, 'rounded', 'rounded, 13, true');
         styleStep(72, 'rainbow', 'rainbow, 13, true');
         styleStep(74, 'bars', 'bars, 13, true');
+
+        // The spectrum takes the place of the bars in the top bar and gives
+        // them back when it goes. The card keeps its bars either way.
+        const spectrumStep = (at, on, expect) => {
+            this._at(at, () => stateObj()?._settings.set_boolean('show-spectrum', on));
+            this._at(at + 0.3, () => {
+                const eq = model()?.equalizer;
+                const card = cards()[0]?._equalizer ?? null;
+                log(`PROBE SPECTRUM ${on ? 'on' : 'off'} icon=${eq?.iconStyle} ` +
+                    `w=${eq?.get_width()} analyzer=${eq?.analyzer !== null} ` +
+                    `card=${card?.iconStyle} cardAnalyzer=${card !== null && card.analyzer !== null} ` +
+                    `(expect ${expect})`);
+            });
+        };
+        spectrumStep(74.5, true, 'spectrum, 63, true, bars, true');
+        spectrumStep(75.5, false, 'bars, 13, false, bars, false');
 
         // The popup only shows so many players at once, and the ones playing
         // keep their places.
@@ -847,6 +930,100 @@ export default class ProbeQs extends Extension {
             log(`PROBE GONE cards=${cards().length} shouldShow=${m?.shouldShow} ` +
                 `eqVisible=${m?.equalizer.visible} builtin=${builtinCount()}`);
         });
+
+        // The right-click menu on the panel button. No player is left by now,
+        // so 'always' is what keeps the button up.
+        const ctx = tag => {
+            const btn = panelButton();
+            const dots = [...btn._visibilityItems]
+                .map(([value, item]) => `${value}=${item._ornament}`).join(' ');
+            log(`PROBE CTX ${tag} ctx=${btn._contextMenu.isOpen} menu=${btn.menu.isOpen} ` +
+                `active=${btn.has_style_pseudo_class('active')} visible=${btn.visible} ` +
+                `setting=${stateObj()._settings.get_string('indicator-visibility')} ${dots}`);
+        };
+        const rightClick = () => clickAt(panelButton(), Clutter.BUTTON_SECONDARY);
+        const pick = value => clickAt(panelButton()._visibilityItems.get(value));
+
+        this._at(96.5, () => {
+            // An earlier step can leave the quick settings popup open, and
+            // the first press would only close it.
+            Main.panel.statusArea.quickSettings.menu.close();
+            stateObj()._settings.set_string('indicator-visibility', 'always');
+            stateObj()._settings.set_string('location', 'panel');
+        });
+        this._at(97.5, rightClick);
+        this._at(97.9, () => ctx('open (expect true false true, always=1 active=4 never=4)'));
+        this._at(98.1, rightClick);
+        this._at(98.5, () => ctx('second right-click (expect false false false)'));
+
+        this._at(98.7, rightClick);
+        this._at(99.1, () => pick('active'));
+        this._at(99.5, () => ctx('picked active (expect ctx=false visible=false, active=1)'));
+        this._at(99.7, () => stateObj()._settings.set_string('indicator-visibility', 'always'));
+
+        this._at(100, () => {
+            stateObj().openPreferences = () => log('PROBE CTX openPreferences called');
+            rightClick();
+        });
+        this._at(100.4, () => clickAt(panelButton()._contextMenu._getMenuItems().at(-1)));
+        this._at(100.8, () => {
+            delete stateObj().openPreferences;
+            ctx('settings item (expect ctx=false, openPreferences called just above)');
+        });
+
+        this._at(101, () => {
+            panelButton().grab_key_focus();
+            pressKey(Clutter.KEY_Menu);
+        });
+        this._at(101.4, () => {
+            const focus = global.stage.key_focus;
+            ctx(`menu key focusInMenu=${panelButton()._contextMenu.actor.contains(focus)} ` +
+                '(expect true, ctx=true)');
+            pressKey(Clutter.KEY_Escape);
+        });
+        this._at(101.8, () => {
+            ctx(`escape focusOnButton=${global.stage.key_focus === panelButton()} ` +
+                '(expect true, ctx=false)');
+            pressKey(Clutter.KEY_Return);
+        });
+        this._at(102.2, () => {
+            ctx('return (expect ctx=false menu=true)');
+            panelButton().menu.close();
+        });
+
+        this._at(102.5, rightClick);
+        this._at(102.9, () => pick('never'));
+        this._at(103.3, () => {
+            ctx('picked never (expect ctx=false visible=false, never=1)');
+            stateObj()._settings.set_string('indicator-visibility', 'always');
+        });
+
+        this._at(103.6, rightClick);
+        this._at(104, () => {
+            ctx('open before hiding (expect ctx=true)');
+            stateObj()._settings.set_string('indicator-visibility', 'active');
+        });
+        this._at(104.4, () => {
+            ctx('hidden while open (expect ctx=false visible=false)');
+            stateObj()._settings.set_string('indicator-visibility', 'always');
+        });
+
+        // Both menus hang off the same button. While one is open, a press on
+        // the button only closes it, so the two are never up together.
+        this._at(104.8, () => panelButton().menu.open(false));
+        this._at(105.1, () => {
+            ctx('card open (expect ctx=false menu=true)');
+            rightClick();
+        });
+        this._at(105.5, () => {
+            ctx('right-click over the card (expect ctx=false menu=false)');
+            rightClick();
+        });
+        this._at(105.9, () => {
+            ctx('opened again (expect ctx=true menu=false)');
+            clickAt(panelButton());
+        });
+        this._at(106.3, () => ctx('left click over the menu (expect ctx=false menu=false)'));
     }
 
     // Milliseconds underneath, so a step can sit between two whole seconds.

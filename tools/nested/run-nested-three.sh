@@ -12,7 +12,7 @@ export NP_MONITOR=$(python3 -c "s=float('$NP_SCALE');print(f'{round(1280*s)}x{ro
 EXT="$S/nested-home/data/gnome-shell/extensions/nowplaying@epogonii.github.io"
 python3 "$SRC"/tools/gen-stylesheets.py
 mkdir -p "$EXT"/schemas
-cp "$SRC"/extension.js "$SRC"/metadata.json "$SRC"/prefs.js "$SRC"/stylesheet*.css "$EXT"/
+cp "$SRC"/extension.js "$SRC"/metadata.json "$SRC"/prefs.js "$SRC"/spectrum.js "$SRC"/stylesheet*.css "$EXT"/
 cp "$SRC"/schemas/*.gschema.xml "$EXT"/schemas/
 # Compile here: a stale gschemas.compiled in the source tree would hide
 # every key added since it was built.
@@ -60,7 +60,7 @@ dbus-run-session -- bash -c '
   sleep 84
   echo "HARNESS killing stubs"
   kill $A $B $C 2>/dev/null
-  sleep 14
+  sleep 60
   echo "HARNESS done"
   kill $SHELL_PID 2>/dev/null
   wait 2>/dev/null

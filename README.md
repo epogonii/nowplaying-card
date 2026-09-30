@@ -55,6 +55,15 @@ The icon walks around the colour wheel while a track plays, if you want it to:
   </picture>
 </p>
 
+In place of the bars, a spectrum analyzer that moves with the sound itself:
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/spectrum-dark.gif">
+    <img src="docs/spectrum-light.gif" width="252" alt="Sixteen columns of segments rising and falling with the music, in rainbow colours">
+  </picture>
+</p>
+
 Or no button of its own, and the card at the bottom of Quick Settings:
 
 <p align="center">
@@ -93,8 +102,14 @@ Preferences:
 - One popup width whatever the track is called, so nothing jumps between songs
 - Own panel button or embedded in Quick Settings, and the top-bar icon can be
   there always, only while a player runs, or never
+- Right-click the panel button to choose when it shows, or to open the
+  preferences
 - Equalizer bars with rounded ends, square ends, or rounded ends in colours
   that keep moving
+- Or a spectrum analyzer that moves with the sound itself, like the meter on a
+  hi-fi: segments, solid columns or columns mirrored around the middle, eight
+  to thirty-two of them, in the theme colour, with a red top, green to red or a
+  rainbow, and peaks that hang on for a moment
 - Follows the system light and dark theme and switches with it
 - Hides GNOME's own media controls while it runs, and gives them straight back
   when it stops
@@ -125,9 +140,9 @@ gnome-extensions enable nowplaying@epogonii.github.io
 
 ```sh
 gnome-extensions pack --force --schema=schemas/org.gnome.shell.extensions.nowplaying.gschema.xml \
-    --extra-source=stylesheet.css --extra-source=stylesheet-light.css \
-    --extra-source=stylesheet-dark.css --extra-source=LICENSE \
-    --extra-source=icons
+    --extra-source=spectrum.js --extra-source=stylesheet.css \
+    --extra-source=stylesheet-light.css --extra-source=stylesheet-dark.css \
+    --extra-source=LICENSE --extra-source=icons
 gnome-extensions install --force nowplaying@epogonii.github.io.shell-extension.zip
 gnome-extensions enable nowplaying@epogonii.github.io
 ```
@@ -136,6 +151,12 @@ GNOME Shell 45 or newer, on Wayland or X11, and nothing else. Log out and back
 in first (X11: `Alt+F2`, then `r`): a running shell keeps an extension's
 JavaScript in memory for the life of the process, so new code needs a new shell.
 Preferences apply immediately.
+
+The spectrum analyzer listens to the default output through GStreamer's
+PulseAudio plugin, from gst-plugins-good, which PipeWire answers the same as
+PulseAudio does; without the plugin the columns only pretend. The sound is
+measured on the computer as it goes by and kept nowhere. Before GNOME 50.2 the
+microphone indicator shows while the analyzer listens.
 
 ---
 
@@ -159,6 +180,17 @@ Four pages, in the order the window shows them.
 | Scroll long text | Move a title sideways instead of cutting it off |
 | Icon style | Square ends, rounded ends, or cycling colours |
 | Animate the icon | Move the equalizer bars during playback |
+| Show the spectrum | Columns that follow the sound in place of the bars in the top bar |
+| Shape | Segments, solid columns, or columns mirrored around the middle |
+| Colours | The theme colour, red at the top, green to red, or a rainbow |
+| Columns | Eight to thirty-two; more columns make the icon wider |
+| Peak markers | Hold the top of each column for a moment |
+| Track next to the spectrum | Same as the panel, title, or artist and title, while the spectrum is on; the spectrum stays beside it even with Icon in the panel off; panel mode only |
+
+Turned off, the spectrum gives the top bar back its bars in the icon style
+above. Shape, Colours, Columns, Peak markers and Track next to the spectrum do
+nothing while it is off. With Animate the icon off, or animations off in the
+system, the spectrum stands still and does not listen.
 
 ### Panel
 
@@ -166,10 +198,11 @@ Four pages, in the order the window shows them.
 | --- | --- |
 | Location | Own panel button, or embedded in Quick Settings |
 | Panel area / Position | Where the button sits, panel mode only |
-| Show in the top bar | Always, only while a player is running, or never |
+| Visibility | Always, only while a player is running, or never; in Quick Settings mode never still leaves the card there |
 | Track in the panel | Nothing, title, or artist and title next to the icon |
 | Text width | Longest the panel text may get, in pixels |
 | Fixed text width | Keep that width even for a short track |
+| Icon in the panel | The equalizer next to the text, or the text alone |
 | Scrolling over the button | Nothing, switch tracks, or change volume |
 | Controls in the panel | Previous, play and next next to the icon |
 | Middle click | Nothing, play or pause, or next track |

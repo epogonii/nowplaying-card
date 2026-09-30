@@ -16,6 +16,9 @@ const MIDDLE_CLICKS = ['none', 'play-pause', 'next'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
 const EQUALIZER_STYLES = ['bars', 'rounded', 'rainbow'];
+const SPECTRUM_SHAPES = ['segments', 'solid', 'mirrored'];
+const SPECTRUM_COLORS = ['plain', 'classic', 'level', 'rainbow'];
+const SPECTRUM_TEXTS = ['panel', 'title', 'artist-title'];
 
 const PROJECT_URL = 'https://github.com/epogonii/nowplaying-card';
 const ISSUES_URL = 'https://github.com/epogonii/nowplaying-card/issues';
@@ -136,6 +139,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         panel.add(fixedWidthRow);
 
+        const iconRow = new Adw.SwitchRow({
+            title: _('Icon in the panel'),
+            subtitle: _('The equalizer next to the text, or the text alone'),
+        });
+        panel.add(iconRow);
+
         const scrollRow = new Adw.ComboRow({
             title: _('Scrolling over the button'),
             model: new Gtk.StringList({
@@ -250,14 +259,72 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         icon.add(animateRow);
 
-        const visibilityRow = new Adw.ComboRow({
-            title: _('Show in the top bar'),
-            subtitle: _('In Quick Settings mode, never still leaves the card there'),
+        const spectrum = new Adw.PreferencesGroup({
+            title: _('Spectrum analyzer'),
+            description: _('Columns in the top bar that follow what is playing; the bars on the card follow it too. The sound is measured on this computer and kept nowhere. Without GStreamer\'s PulseAudio plugin the equalizer only pretends, and before GNOME 50.2 the microphone indicator shows while it listens.'),
+        });
+        cardPage.add(spectrum);
+
+        const spectrumRow = new Adw.SwitchRow({
+            title: _('Show the spectrum'),
+            subtitle: _('In place of the bars in the top bar'),
+        });
+        spectrum.add(spectrumRow);
+
+        const shapeRow = new Adw.ComboRow({
+            title: _('Shape'),
+            model: new Gtk.StringList({
+                strings: [_('Segments'), _('Solid'), _('Mirrored')],
+            }),
+        });
+        spectrum.add(shapeRow);
+
+        const colorsRow = new Adw.ComboRow({
+            title: _('Colours'),
             model: new Gtk.StringList({
                 strings: [
-                    _('Always'),
-                    _('While a player is running'),
-                    _('Never'),
+                    _('Theme colour'),
+                    _('Red at the top'),
+                    _('Green to red'),
+                    _('Rainbow'),
+                ],
+            }),
+        });
+        spectrum.add(colorsRow);
+
+        const columnsRow = new Adw.SpinRow({
+            title: _('Columns'),
+            subtitle: _('More columns make the icon wider'),
+            adjustment: new Gtk.Adjustment({
+                lower: 8,
+                upper: 32,
+                step_increment: 1,
+                page_increment: 4,
+            }),
+        });
+        spectrum.add(columnsRow);
+
+        const peaksRow = new Adw.SwitchRow({
+            title: _('Peak markers'),
+            subtitle: _('Hold the top of each column for a moment'),
+        });
+        spectrum.add(peaksRow);
+
+        const spectrumTextRow = new Adw.ComboRow({
+            title: _('Track next to the spectrum'),
+            model: new Gtk.StringList({
+                strings: [_('Same as the panel'), _('Title'), _('Artist and title')],
+            }),
+        });
+        spectrum.add(spectrumTextRow);
+
+        const visibilityRow = new Adw.ComboRow({
+            title: _('Visibility'),
+            model: new Gtk.StringList({
+                strings: [
+                    _('Always Show in Top Bar'),
+                    _('Show When Active'),
+                    _('Don\'t Show in Top Bar'),
                 ],
             }),
         });
@@ -297,6 +364,9 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         this._bindEnum(settings, 'cover-size', COVER_SIZES, coverRow);
         this._bindEnum(settings, 'indicator-visibility', VISIBILITIES, visibilityRow);
         this._bindEnum(settings, 'equalizer-style', EQUALIZER_STYLES, iconStyleRow);
+        this._bindEnum(settings, 'spectrum-shape', SPECTRUM_SHAPES, shapeRow);
+        this._bindEnum(settings, 'spectrum-colors', SPECTRUM_COLORS, colorsRow);
+        this._bindEnum(settings, 'spectrum-text', SPECTRUM_TEXTS, spectrumTextRow);
         settings.bind('panel-index', indexRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('max-cards', maxCardsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-text-width', textWidthRow, 'value', Gio.SettingsBindFlags.DEFAULT);
@@ -306,8 +376,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('scroll-text', scrollTextRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('sort-playing-first', sortRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('animate-icon', animateRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('show-spectrum', spectrumRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('spectrum-columns', columnsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('spectrum-peaks', peaksRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-controls', controlsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-text-fixed', fixedWidthRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('panel-icon', iconRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('hide-builtin-media', builtinRow, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         this._bindIgnored(settings, players);
@@ -319,12 +393,24 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             boxRow.sensitive = isPanel;
             indexRow.sensitive = isPanel;
             panel.sensitive = isPanel;
-            const hasText = settings.get_string('panel-text') !== 'none';
+            const showSpectrum = settings.get_boolean('show-spectrum');
+            const spectrumText = settings.get_string('spectrum-text');
+            const ownText = showSpectrum && spectrumText !== 'panel';
+            const hasText = (ownText ? spectrumText : settings.get_string('panel-text')) !== 'none';
             textWidthRow.sensitive = hasText;
             fixedWidthRow.sensitive = hasText;
+            iconRow.sensitive = hasText && !ownText;
+            shapeRow.sensitive = showSpectrum;
+            colorsRow.sensitive = showSpectrum;
+            columnsRow.sensitive = showSpectrum;
+            peaksRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');
+            spectrumTextRow.sensitive = showSpectrum && isPanel;
         };
         settings.connect('changed::location', syncSensitivity);
         settings.connect('changed::panel-text', syncSensitivity);
+        settings.connect('changed::show-spectrum', syncSensitivity);
+        settings.connect('changed::spectrum-text', syncSensitivity);
+        settings.connect('changed::animate-icon', syncSensitivity);
         syncSensitivity();
     }
 

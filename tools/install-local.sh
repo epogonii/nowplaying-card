@@ -23,7 +23,7 @@ python3 "$src/tools/gen-stylesheets.py"
 
 # LICENSE comes along the same as it does in the packed zip: the copy on disk
 # should carry the terms it is given under.
-for f in metadata.json extension.js prefs.js stylesheet.css \
+for f in metadata.json extension.js prefs.js spectrum.js stylesheet.css \
          stylesheet-light.css stylesheet-dark.css LICENSE; do
     install_file "$src/$f" "$dst/$f"
 done

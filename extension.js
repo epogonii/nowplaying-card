@@ -14,9 +14,11 @@ import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/ex
 import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
+import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
 const N_COLUMNS = 2;
 
@@ -93,6 +95,9 @@ const PANEL_CONTROL_ICON_SIZE = 14;
 // no event vfunc left above to chain to, so both the menu and the transport
 // have to be answered by gestures of our own where the class exists.
 const HAS_CLICK_GESTURE = typeof Clutter.ClickGesture !== 'undefined';
+
+// GNOME 45 has no NO_DOT.
+const NO_DOT = PopupMenu.Ornament.NO_DOT ?? PopupMenu.Ornament.NONE;
 const POLL_MS = 1000;
 const SEEK_SETTLE_MS = 1000;
 const SEEK_GUARD_MS = 800;
@@ -156,6 +161,12 @@ const DEFAULTS = {
     'card-layout': 'auto',
     'animate-icon': true,
     'equalizer-style': 'rounded',
+    'show-spectrum': false,
+    'spectrum-shape': 'segments',
+    'spectrum-colors': 'classic',
+    'spectrum-columns': 16,
+    'spectrum-peaks': true,
+    'spectrum-text': 'panel',
     'max-cards': 3,
     'cover-size': 'medium',
     'show-progress': true,
@@ -169,6 +180,7 @@ const DEFAULTS = {
     'panel-text': 'none',
     'panel-text-width': 180,
     'panel-text-fixed': false,
+    'panel-icon': true,
     'ignored-players': [],
 };
 
@@ -214,6 +226,28 @@ const HUE_SATURATION = 0.7;
 // Where the three stand while nothing plays.
 const HUE_STATIC = 0.58;
 
+const ROWS = 8;
+const COLUMN_WIDTH = 3;
+const COLUMN_GAP = 1;
+// spectrum.js prints this many bands.
+const BANDS = 32;
+// FALL and PEAK_FALL are in column heights a second.
+const FALL = 2.2;
+const PEAK_HOLD_MS = 500;
+const PEAK_FALL = 1;
+const UNLIT = 0.22;
+const RED_FROM = 0.75;
+const YELLOW_FROM = 0.5;
+
+const SPECTRUM_STALE_MS = 500;
+// Long enough for the gap between two tracks, so it costs no restart.
+const SPECTRUM_GRACE_MS = 3000;
+// A helper that dies sooner than this has failed.
+const SPECTRUM_STEADY_MS = 10000;
+const SPECTRUM_TRIES = 3;
+// Must match NO_CAPTURE in spectrum.js.
+const SPECTRUM_NO_CAPTURE = 2;
+
 // Hue in turns, saturation and value in 0 to 1, out as red, green and blue in
 // the same range.
 function hsvToRgb(hue, saturation, value) {
@@ -234,6 +268,17 @@ function hsvToRgb(hue, saturation, value) {
     }
 }
 
+function rgb(hex) {
+    const value = Number.parseInt(hex.slice(1), 16);
+    return [(value >> 16) / 255, (value >> 8 & 0xff) / 255, (value & 0xff) / 255];
+}
+
+// Bright for a dark panel, deep for a light one.
+const LEVEL_COLORS = [
+    ['#2ec27e', '#f6d32d', '#e01b24'].map(rgb),
+    ['#26a269', '#e5a50a', '#c01c28'].map(rgb),
+];
+
 // Equalizer bars, drawn with the panel's own foreground color so it follows
 // the theme. Animates only while something is playing.
 const EqualizerIcon = GObject.registerClass(
@@ -247,10 +292,17 @@ class EqualizerIcon extends St.DrawingArea {
         this._playing = false;
         this._animate = true;
         this._iconStyle = DEFAULTS['equalizer-style'];
+        this._shape = DEFAULTS['spectrum-shape'];
+        this._colors = DEFAULTS['spectrum-colors'];
+        this._columns = DEFAULTS['spectrum-columns'];
+        this._showPeaks = DEFAULTS['spectrum-peaks'];
+        this._analyzer = null;
+        this._holding = false;
         this._timeline = null;
         this._frameId = 0;
         this._start = GLib.get_monotonic_time();
         this._painted = 0;
+        this._resetLevels();
 
         // A new system theme means a new foreground colour: redraw with it. A
         // new scale factor arrives the same way, and that one changes the width.
@@ -263,7 +315,11 @@ class EqualizerIcon extends St.DrawingArea {
             this._updateTimer();
             this.queue_repaint();
         }, this);
-        this.connect('destroy', () => this._stopTimer());
+        this.connect('destroy', () => {
+            this._stopTimer();
+            this._letGo();
+            this._analyzer = null;
+        });
     }
 
     set playing(playing) {
@@ -292,13 +348,14 @@ class EqualizerIcon extends St.DrawingArea {
         return this._animate;
     }
 
-    // Square ends, rounded ends, or rounded ends in colours that move: the
-    // shape of the bars is the same either way, so only the drawing changes.
+    // The spectrum is wider than the bars, so a new style can change the size.
     set iconStyle(style) {
         if (this._iconStyle === style)
             return;
 
         this._iconStyle = style;
+        this._resetLevels();
+        this.queue_relayout();
         this.queue_repaint();
     }
 
@@ -306,11 +363,44 @@ class EqualizerIcon extends St.DrawingArea {
         return this._iconStyle;
     }
 
+    // Held only while the icon moves on screen.
+    set analyzer(analyzer) {
+        if (this._analyzer === analyzer)
+            return;
+
+        this._letGo();
+        this._analyzer = analyzer;
+        this._updateTimer();
+        this.queue_repaint();
+    }
+
+    get analyzer() {
+        return this._analyzer;
+    }
+
+    setSpectrum({shape, colors, columns, peaks}) {
+        if (shape === this._shape && colors === this._colors &&
+            columns === this._columns && peaks === this._showPeaks)
+            return;
+
+        this._shape = shape;
+        this._colors = colors;
+        this._showPeaks = peaks;
+        if (columns !== this._columns) {
+            this._columns = columns;
+            this._resetLevels();
+            this.queue_relayout();
+        }
+        this.queue_repaint();
+    }
+
     // The height comes from the stylesheet and doubles in a 200% session, so
     // the width has to as well: an actor size is in stage pixels and follows
     // nothing on its own.
     vfunc_get_preferred_width(_forHeight) {
-        const width = EQUALIZER_WIDTH * scaleFactor();
+        const width = (this._iconStyle === 'spectrum'
+            ? this._columns * (COLUMN_WIDTH + COLUMN_GAP) - COLUMN_GAP
+            : EQUALIZER_WIDTH) * scaleFactor();
 
         if (!this.get_stage())
             return [width, width];
@@ -326,6 +416,15 @@ class EqualizerIcon extends St.DrawingArea {
     _updateTimer() {
         const wanted = this._moving && this.mapped;
 
+        const holding = wanted && this._analyzer !== null;
+        if (holding !== this._holding) {
+            this._holding = holding;
+            if (holding)
+                this._analyzer.hold(this);
+            else
+                this._analyzer.release(this);
+        }
+
         if (wanted && this._timeline === null) {
             // A timer of our own fires whenever it likes, and a frame that
             // lands between two frames of the screen is a frame that shows up
@@ -338,9 +437,16 @@ class EqualizerIcon extends St.DrawingArea {
             this._frameId = this._timeline.connect('new-frame',
                 () => this._onFrame());
             this._timeline.start();
+            this._resetLevels();
         } else if (!wanted) {
             this._stopTimer();
         }
+    }
+
+    _letGo() {
+        if (this._holding)
+            this._analyzer.release(this);
+        this._holding = false;
     }
 
     // The clock offers more frames than these bars have any use for: this takes
@@ -351,7 +457,80 @@ class EqualizerIcon extends St.DrawingArea {
             return;
 
         this._painted = now;
+        this._step(now);
         this.queue_repaint();
+    }
+
+    get _count() {
+        return this._iconStyle === 'spectrum' ? this._columns : N_BARS;
+    }
+
+    // A paused spectrum makes a low hill, so it still reads as one.
+    _restLevel(i) {
+        if (this._iconStyle !== 'spectrum')
+            return STATIC_HEIGHTS[i];
+
+        return 0.25 + 0.45 * Math.sin(Math.PI * (i + 0.5) / this._columns);
+    }
+
+    _fakeLevel(i, t) {
+        if (this._iconStyle !== 'spectrum')
+            return (Math.sin(t * SPEEDS[i] + PHASES[i]) + 1) / 2;
+
+        const slow = Math.sin(t * SPEEDS[i % N_BARS] * 0.6 + i * 0.9);
+        const fast = Math.sin(t * SPEEDS[(i + 1) % N_BARS] + i * 1.7);
+        return (slow + fast + 2) / 4;
+    }
+
+    _resetLevels() {
+        const count = this._count;
+        this._levels = Array.from({length: count}, (_, i) => this._restLevel(i));
+        this._peaks = new Array(count).fill(0);
+        this._peakTimes = new Array(count).fill(0);
+        this._lastStep = GLib.get_monotonic_time();
+    }
+
+    // An analyzer that has heard nothing yet counts as silence, and one that
+    // gave up as no analyzer at all.
+    _step(now) {
+        const dt = (now - this._lastStep) / 1000000;
+        const t = (now - this._start) / 1000000;
+        const bands = this._analyzer?.bands ?? null;
+        const real = bands !== null || this._analyzer?.listening === true;
+        const spectrum = this._iconStyle === 'spectrum';
+        const count = this._levels.length;
+
+        this._lastStep = now;
+
+        for (let i = 0; i < count; i++) {
+            let level = 0;
+            if (bands) {
+                // A bar spans a third of the sound and would nearly always be
+                // full on its loudest band, so it takes the average.
+                const from = Math.floor(i * BANDS / count);
+                const to = Math.floor((i + 1) * BANDS / count);
+                for (let band = from; band < to; band++) {
+                    level = spectrum
+                        ? Math.max(level, bands[band])
+                        : level + bands[band] / (to - from);
+                }
+            } else if (!real) {
+                level = this._fakeLevel(i, t);
+            }
+
+            if (!real || level >= this._levels[i])
+                this._levels[i] = level;
+            else
+                this._levels[i] = Math.max(level, this._levels[i] - FALL * dt);
+
+            if (this._levels[i] >= this._peaks[i]) {
+                this._peaks[i] = this._levels[i];
+                this._peakTimes[i] = now;
+            } else if (now - this._peakTimes[i] > PEAK_HOLD_MS * 1000) {
+                this._peaks[i] = Math.max(this._levels[i],
+                    this._peaks[i] - PEAK_FALL * dt);
+            }
+        }
     }
 
     vfunc_repaint() {
@@ -359,6 +538,12 @@ class EqualizerIcon extends St.DrawingArea {
         const [, height] = this.get_surface_size();
         const cr = this.get_context();
         const color = themeNode.get_foreground_color();
+
+        if (this._iconStyle === 'spectrum') {
+            this._repaintSpectrum(cr, color, height);
+            cr.$dispose();
+            return;
+        }
 
         const scale = scaleFactor();
         const barWidth = BAR_WIDTH * scale;
@@ -389,9 +574,7 @@ class EqualizerIcon extends St.DrawingArea {
         }
 
         for (let i = 0; i < N_BARS; i++) {
-            const wave = moving
-                ? (Math.sin(t * SPEEDS[i] + PHASES[i]) + 1) / 2
-                : STATIC_HEIGHTS[i];
+            const wave = moving ? this._levels[i] : STATIC_HEIGHTS[i];
             const barHeight = minHeight + (maxHeight - minHeight) * wave;
             const x = i * (barWidth + gap);
             const bottom = (height + barHeight) / 2;
@@ -420,6 +603,117 @@ class EqualizerIcon extends St.DrawingArea {
         cr.$dispose();
     }
 
+    // Unlit segments are drawn faintly, so the grid shows while it is quiet.
+    _repaintSpectrum(cr, color, height) {
+        // Two pixels a row at least, so a thin panel gets fewer rows.
+        const rows = Math.min(ROWS, Math.floor(height / 2));
+        if (rows < 1)
+            return;
+
+        const scale = scaleFactor();
+        const pitch = (COLUMN_WIDTH + COLUMN_GAP) * scale;
+        const columnWidth = COLUMN_WIDTH * scale;
+        const rowPitch = Math.floor(height / rows);
+        const gap = Math.min(COLUMN_GAP * scale, rowPitch - 1);
+        const segment = rowPitch - gap;
+        const gridHeight = rows * rowPitch - gap;
+        const top = Math.floor((height - gridHeight) / 2);
+        const bottom = top + gridHeight;
+        const middle = top + gridHeight / 2;
+
+        const moving = this._moving;
+        const showPeaks = moving && this._showPeaks;
+        const count = this._levels.length;
+        const alpha = color.alpha / 255;
+        const t = (GLib.get_monotonic_time() - this._start) / 1000000;
+        const ink = [color.red / 255, color.green / 255, color.blue / 255];
+        const lightInk = (color.red + color.green + color.blue) / 3 > 127;
+        const [green, yellow, red] = LEVEL_COLORS[lightInk ? 0 : 1];
+        const hue = moving ? t / HUE_PERIOD : HUE_STATIC;
+
+        const colorAt = (i, fraction) => {
+            switch (this._colors) {
+            case 'classic':
+                return fraction >= RED_FROM ? red : ink;
+            case 'level':
+                if (fraction >= RED_FROM)
+                    return red;
+                return fraction >= YELLOW_FROM ? yellow : green;
+            case 'rainbow':
+                return hsvToRgb(hue + i / count, HUE_SATURATION,
+                    lightInk ? 1 : 0.8);
+            default:
+                return ink;
+            }
+        };
+
+        // Zone by zone, so a solid column changes colour where segments do.
+        const edges = [0, YELLOW_FROM, RED_FROM, 1];
+        const mirrored = this._shape === 'mirrored';
+        const reach = mirrored ? gridHeight / 2 : gridHeight;
+        const span = (x, i, from, to, strength) => {
+            for (let zone = 0; zone < 3; zone++) {
+                const low = Math.max(from, edges[zone]);
+                const high = Math.min(to, edges[zone + 1]);
+                if (high <= low)
+                    continue;
+
+                const [r, g, b] = colorAt(i, (edges[zone] + edges[zone + 1]) / 2);
+                cr.setSourceRGBA(r, g, b, strength);
+                const inner = Math.round(low * reach);
+                const outer = Math.round(high * reach);
+                if (mirrored) {
+                    cr.rectangle(x, Math.round(middle) - outer,
+                        columnWidth, outer - inner);
+                    cr.rectangle(x, Math.round(middle) + inner,
+                        columnWidth, outer - inner);
+                } else {
+                    cr.rectangle(x, bottom - outer, columnWidth, outer - inner);
+                }
+                cr.fill();
+            }
+        };
+
+        for (let i = 0; i < count; i++) {
+            const x = i * pitch;
+            const level = Math.min(moving ? this._levels[i] : this._restLevel(i), 1);
+            const peak = showPeaks ? Math.min(this._peaks[i], 1) : 0;
+
+            if (this._shape === 'segments') {
+                const lit = Math.max(1, Math.round(level * rows));
+                const peakRow = Math.round(peak * rows) - 1;
+
+                for (let row = 0; row < rows; row++) {
+                    const [r, g, b] = colorAt(i, (row + 0.5) / rows);
+                    const on = row < lit || row === peakRow;
+                    cr.setSourceRGBA(r, g, b, on ? alpha : alpha * UNLIT);
+                    cr.rectangle(x, bottom - row * rowPitch - segment,
+                        columnWidth, segment);
+                    cr.fill();
+                }
+                continue;
+            }
+
+            const lit = Math.max(level, scale / reach);
+            span(x, i, 0, lit, alpha);
+            span(x, i, lit, 1, alpha * UNLIT);
+
+            if (peak > lit) {
+                const [r, g, b] = colorAt(i, peak);
+                const outer = Math.round(peak * reach);
+                cr.setSourceRGBA(r, g, b, alpha);
+                if (mirrored) {
+                    cr.rectangle(x, Math.round(middle) - outer, columnWidth, scale);
+                    cr.rectangle(x, Math.round(middle) + outer - scale,
+                        columnWidth, scale);
+                } else {
+                    cr.rectangle(x, bottom - outer, columnWidth, scale);
+                }
+                cr.fill();
+            }
+        }
+    }
+
     // Stop burning frames while the panel is hidden (fullscreen video), and
     // pick the animation back up when it comes back.
     vfunc_map() {
@@ -441,6 +735,215 @@ class EqualizerIcon extends St.DrawingArea {
         this._timeline = null;
     }
 });
+
+// Runs spectrum.js while some icon holds it. The helper hears the whole
+// default output, not one player.
+class SpectrumAnalyzer {
+    constructor() {
+        this._path = GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]);
+        this._holders = new Set();
+        this._proc = null;
+        this._stdin = null;
+        this._cancellable = null;
+        this._bands = null;
+        this._received = 0;
+        this._missing = false;
+        this._failures = 0;
+        this._started = 0;
+        this._graceId = 0;
+        this._backoffId = 0;
+        this._mixer = null;
+        this._sinkId = 0;
+        this._sink = null;
+    }
+
+    // 0 to 1, lowest band first; null once the helper has gone quiet.
+    get bands() {
+        if (this._bands === null ||
+            GLib.get_monotonic_time() - this._received > SPECTRUM_STALE_MS * 1000)
+            return null;
+
+        return this._bands;
+    }
+
+    get listening() {
+        return this._proc !== null || this._backoffId !== 0;
+    }
+
+    hold(holder) {
+        const first = this._holders.size === 0;
+        this._holders.add(holder);
+
+        if (this._graceId) {
+            GLib.source_remove(this._graceId);
+            this._graceId = 0;
+        }
+
+        if (first && !this.listening) {
+            this._failures = 0;
+            this._start();
+        }
+    }
+
+    release(holder) {
+        if (!this._holders.delete(holder) || this._holders.size > 0)
+            return;
+
+        if (this._backoffId) {
+            GLib.source_remove(this._backoffId);
+            this._backoffId = 0;
+        }
+
+        if (this._proc !== null && this._graceId === 0) {
+            this._graceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,
+                SPECTRUM_GRACE_MS, () => {
+                    this._graceId = 0;
+                    this._stop();
+                    return GLib.SOURCE_REMOVE;
+                });
+        }
+    }
+
+    _start() {
+        if (this._missing || this._path === null)
+            return;
+
+        let proc;
+        try {
+            proc = Gio.Subprocess.new(['gjs', '-m', `${this._path}/spectrum.js`],
+                Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE);
+        } catch (e) {
+            console.debug(`nowplaying: no spectrum: ${e.message}`);
+            this._missing = true;
+            return;
+        }
+
+        this._proc = proc;
+        this._started = GLib.get_monotonic_time();
+        this._cancellable = new Gio.Cancellable();
+        // Never written to: the helper stops when its stdin closes.
+        this._stdin = proc.get_stdin_pipe();
+
+        const stream = new Gio.DataInputStream({
+            base_stream: proc.get_stdout_pipe(),
+            close_base_stream: true,
+        });
+        this._read(stream, this._cancellable);
+        proc.wait_async(null, (_proc, result) => this._onExit(proc, result));
+        this._watchSink();
+    }
+
+    _read(stream, cancellable) {
+        stream.read_line_async(GLib.PRIORITY_DEFAULT, cancellable, (_stream, result) => {
+            let line = null;
+            try {
+                [line] = stream.read_line_finish_utf8(result);
+            } catch (e) {
+                if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                    console.debug(`nowplaying: spectrum: ${e.message}`);
+            }
+
+            if (line === null || cancellable.is_cancelled()) {
+                stream.close_async(GLib.PRIORITY_DEFAULT, null, null);
+                return;
+            }
+
+            this._parse(line);
+            this._read(stream, cancellable);
+        });
+    }
+
+    _parse(line) {
+        const values = line.split(' ');
+        if (values.length !== BANDS)
+            return;
+
+        this._bands = Float32Array.from(values, value => Number(value) / 1000);
+        this._received = GLib.get_monotonic_time();
+    }
+
+    _onExit(proc, result) {
+        try {
+            proc.wait_finish(result);
+        } catch (e) {
+            console.debug(`nowplaying: spectrum: ${e.message}`);
+        }
+
+        if (proc !== this._proc)
+            return;
+
+        const status = proc.get_if_exited() ? proc.get_exit_status() : -1;
+        const ran = GLib.get_monotonic_time() - this._started;
+        this._stop();
+
+        if (status === SPECTRUM_NO_CAPTURE) {
+            this._missing = true;
+            return;
+        }
+
+        this._failures = ran >= SPECTRUM_STEADY_MS * 1000 ? 1 : this._failures + 1;
+        if (this._holders.size === 0 || this._failures >= SPECTRUM_TRIES)
+            return;
+
+        this._backoffId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,
+            1000 * 2 ** (this._failures - 1), () => {
+                this._backoffId = 0;
+                this._start();
+                return GLib.SOURCE_REMOVE;
+            });
+    }
+
+    _stop() {
+        // Forgotten first, so that its exit is not taken for a failure.
+        const proc = this._proc;
+        this._proc = null;
+        this._cancellable?.cancel();
+        this._cancellable = null;
+        this._stdin?.close_async(GLib.PRIORITY_DEFAULT, null, null);
+        this._stdin = null;
+        proc?.force_exit();
+        this._unwatchSink();
+        this._bands = null;
+
+        if (this._graceId) {
+            GLib.source_remove(this._graceId);
+            this._graceId = 0;
+        }
+        if (this._backoffId) {
+            GLib.source_remove(this._backoffId);
+            this._backoffId = 0;
+        }
+    }
+
+    // pulsesrc stays on the output that was the default when it started.
+    _watchSink() {
+        this._mixer = Volume.getMixerControl();
+        this._sink = this._mixer.get_default_sink()?.id ?? null;
+        this._sinkId = this._mixer.connect('default-sink-changed', (_mixer, id) => {
+            if (id !== this._sink)
+                this._restart();
+        });
+    }
+
+    _unwatchSink() {
+        if (this._sinkId)
+            this._mixer.disconnect(this._sinkId);
+        this._sinkId = 0;
+        this._mixer = null;
+    }
+
+    _restart() {
+        this._stop();
+        if (this._holders.size > 0)
+            this._start();
+    }
+
+    destroy() {
+        this._holders.clear();
+        this._path = null;
+        this._stop();
+    }
+}
 
 // A label that walks its own text sideways when it does not fit, instead of
 // cutting it off. The width request stays at the minimum the theme allows, so
@@ -701,6 +1204,7 @@ const CARD_OPTIONS = {
     scrollText: DEFAULTS['scroll-text'],
     animate: DEFAULTS['animate-icon'],
     equalizerStyle: DEFAULTS['equalizer-style'],
+    analyzer: null,
     maxCards: DEFAULTS['max-cards'],
 };
 
@@ -1021,9 +1525,11 @@ const MediaCard = GObject.registerClass({
         this._title.scroll = options.scrollText;
         this._subtitle.scroll = options.scrollText;
 
+        // No room for columns here, so these bars follow the sound instead.
         this._equalizer.visible = !compact;
         this._equalizer.animate = options.animate;
         this._equalizer.iconStyle = options.equalizerStyle;
+        this._equalizer.analyzer = options.analyzer;
         this._equalizer.playing = this.playing;
 
         const controlSize = compact
@@ -2358,6 +2864,7 @@ class MediaModel {
         this._players = new Set();
         this._shown = new Set();
 
+        this._analyzer = new SpectrumAnalyzer();
         this.equalizer = new EqualizerIcon();
         this.stack = new CardStack(closeMenu, keepStackVisible);
 
@@ -2457,8 +2964,17 @@ class MediaModel {
         this._syncPlayers();
         this.stack.setLayout(readSetting(this._settings, 'card-layout'));
         this.stack.setOptions(this._readOptions());
+        const spectrum = readSetting(this._settings, 'show-spectrum');
         this.equalizer.animate = readSetting(this._settings, 'animate-icon');
-        this.equalizer.iconStyle = readSetting(this._settings, 'equalizer-style');
+        this.equalizer.iconStyle = spectrum
+            ? 'spectrum' : readSetting(this._settings, 'equalizer-style');
+        this.equalizer.setSpectrum({
+            shape: readSetting(this._settings, 'spectrum-shape'),
+            colors: readSetting(this._settings, 'spectrum-colors'),
+            columns: readSetting(this._settings, 'spectrum-columns'),
+            peaks: readSetting(this._settings, 'spectrum-peaks'),
+        });
+        this.equalizer.analyzer = spectrum ? this._analyzer : null;
         this.equalizer.playing = this.stack.anyPlaying;
         this.notifyVisibility?.();
     }
@@ -2474,6 +2990,8 @@ class MediaModel {
             scrollText: readSetting(this._settings, 'scroll-text'),
             animate: readSetting(this._settings, 'animate-icon'),
             equalizerStyle: readSetting(this._settings, 'equalizer-style'),
+            analyzer: readSetting(this._settings, 'show-spectrum')
+                ? this._analyzer : null,
             maxCards: readSetting(this._settings, 'max-cards'),
         };
     }
@@ -2489,6 +3007,8 @@ class MediaModel {
         this.stack = null;
         this.equalizer?.destroy();
         this.equalizer = null;
+        this._analyzer?.destroy();
+        this._analyzer = null;
         this.notifyVisibility = null;
     }
 }
@@ -2496,7 +3016,7 @@ class MediaModel {
 // Host 1: own panel button with its own popup, position set in preferences.
 const NowPlayingButton = GObject.registerClass(
 class NowPlayingButton extends PanelMenu.Button {
-    _init(settings) {
+    _init(settings, openPreferences) {
         super._init(0.5, _('Now Playing'));
 
         this._settings = settings;
@@ -2555,6 +3075,8 @@ class NowPlayingButton extends PanelMenu.Button {
             });
             this._addGesture(this, Clutter.BUTTON_MIDDLE,
                 () => this._middleClickAction());
+            this._addGesture(this, Clutter.BUTTON_SECONDARY,
+                () => this._contextMenu.toggle());
         }
 
         this.menu.box.add_style_class_name('np-menu');
@@ -2565,7 +3087,56 @@ class NowPlayingButton extends PanelMenu.Button {
                 this._model.stack.onMenuOpened();
         }, this);
 
+        this._buildContextMenu(openPreferences);
+
+        this.connect('popup-menu', () => {
+            if (!this._contextMenu.isOpen)
+                this._contextMenu.toggle();
+            this._contextMenu.actor.navigate_focus(null,
+                St.DirectionType.TAB_FORWARD, false);
+        });
+
         this._syncVisibility();
+    }
+
+    // Its own manager: the panel's one finds menus by source actor and would
+    // swap this one for the card on hover.
+    _buildContextMenu(openPreferences) {
+        this._contextMenu = new PopupMenu.PopupMenu(this, 0.5, St.Side.TOP);
+        this._contextMenu.actor.add_style_class_name('panel-menu');
+        Main.uiGroup.add_child(this._contextMenu.actor);
+        this._contextMenu.actor.hide();
+
+        this._contextMenuManager = new PopupMenu.PopupMenuManager(this);
+        this._contextMenuManager.addMenu(this._contextMenu);
+
+        this._visibilityItems = new Map();
+        const choices = [
+            ['always', _('Always Show in Top Bar')],
+            ['active', _('Show When Active')],
+            ['never', _('Don\'t Show in Top Bar')],
+        ];
+        for (const [value, label] of choices) {
+            const item = this._contextMenu.addAction(label,
+                () => this._settings.set_string('indicator-visibility', value));
+            this._visibilityItems.set(value, item);
+        }
+
+        this._contextMenu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this._contextMenu.addAction(_('Settings'), () => openPreferences());
+
+        this._contextMenu.connectObject('open-state-changed', (_menu, open) => {
+            if (open)
+                this.add_style_pseudo_class('active');
+            else
+                this.remove_style_pseudo_class('active');
+        }, this);
+    }
+
+    _syncContextMenu() {
+        const current = readSetting(this._settings, 'indicator-visibility');
+        for (const [value, item] of this._visibilityItems)
+            item.setOrnament(value === current ? PopupMenu.Ornament.DOT : NO_DOT);
     }
 
     // A button of its own inside the panel button. It answers the press and the
@@ -2619,7 +3190,7 @@ class NowPlayingButton extends PanelMenu.Button {
     }
 
     // Older shells open the menu from the generic event signal, so there the
-    // wheel and the middle button have to be answered before that happens.
+    // wheel and the middle and right buttons have to be answered first.
     vfunc_event(event) {
         const type = event.type();
 
@@ -2637,6 +3208,12 @@ class NowPlayingButton extends PanelMenu.Button {
 
         if (middle && this._middleClickAction())
             return Clutter.EVENT_STOP;
+
+        if (type === Clutter.EventType.BUTTON_PRESS &&
+            event.get_button() === Clutter.BUTTON_SECONDARY) {
+            this._contextMenu.toggle();
+            return Clutter.EVENT_STOP;
+        }
 
         return super.vfunc_event(event);
     }
@@ -2703,7 +3280,9 @@ class NowPlayingButton extends PanelMenu.Button {
 
     _syncVisibility() {
         this._syncLabel();
+        this._syncIcon();
         this._syncControls();
+        this._syncContextMenu();
         this.visible = this._model.shouldShow;
     }
 
@@ -2727,8 +3306,15 @@ class NowPlayingButton extends PanelMenu.Button {
         this._nextButton.visible = player.canGoNext;
     }
 
+    // The spectrum's own choice of text, or null when the Panel page decides.
+    _spectrumText() {
+        const mode = readSetting(this._settings, 'spectrum-text');
+        return readSetting(this._settings, 'show-spectrum') && mode !== 'panel' ? mode : null;
+    }
+
     _syncLabel() {
-        const mode = readSetting(this._settings, 'panel-text');
+        const mode = this._spectrumText() ?? readSetting(this._settings, 'panel-text');
+
         const player = this._model.activePlayer;
         const title = player?.trackTitle ?? '';
         const artists = player?.trackArtists.join(', ') ?? '';
@@ -2745,7 +3331,20 @@ class NowPlayingButton extends PanelMenu.Button {
         this._panelLabel.visible = text !== '';
     }
 
+    // With no text the icon stays, or the button would be empty. Text chosen
+    // for the spectrum goes next to it, so the spectrum stays too.
+    _syncIcon() {
+        const showIcon = readSetting(this._settings, 'panel-icon') ||
+            !this._panelLabel.visible || this._spectrumText() !== null;
+        this._model.equalizer.visible = showIcon;
+        if (showIcon)
+            this._panelLabel.remove_style_class_name('np-panel-text-alone');
+        else
+            this._panelLabel.add_style_class_name('np-panel-text-alone');
+    }
+
     destroy() {
+        this._contextMenu.destroy();
         this._model.destroy();
         super.destroy();
     }
@@ -2862,6 +3461,12 @@ export default class NowPlayingExtension extends Extension {
             'changed::indicator-visibility', () => this._host?._syncVisibility(),
             'changed::animate-icon', () => this._host?._model.sync(),
             'changed::equalizer-style', () => this._host?._model.sync(),
+            'changed::show-spectrum', () => this._host?._model.sync(),
+            'changed::spectrum-shape', () => this._host?._model.sync(),
+            'changed::spectrum-colors', () => this._host?._model.sync(),
+            'changed::spectrum-columns', () => this._host?._model.sync(),
+            'changed::spectrum-peaks', () => this._host?._model.sync(),
+            'changed::spectrum-text', () => this._host?._model.sync(),
             'changed::max-cards', () => this._host?._model.sync(),
             'changed::card-layout', () => this._host?._model.sync(),
             'changed::cover-size', () => this._host?._model.sync(),
@@ -2874,6 +3479,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::panel-text-width', () => this._host?._model.sync(),
             'changed::panel-controls', () => this._host?._model.sync(),
             'changed::panel-text-fixed', () => this._host?._model.sync(),
+            'changed::panel-icon', () => this._host?._model.sync(),
             'changed::ignored-players', () => this._host?._model.sync(),
             'changed::hide-builtin-media', () => this._syncBuiltinMedia(),
             this);
@@ -2904,7 +3510,8 @@ export default class NowPlayingExtension extends Extension {
             Main.panel.statusArea.quickSettings.addExternalIndicator(
                 this._host, N_COLUMNS);
         } else {
-            this._host = new NowPlayingButton(this._settings);
+            this._host = new NowPlayingButton(this._settings,
+                () => this.openPreferences());
             Main.panel.addToStatusArea(this.uuid, this._host,
                 readSetting(this._settings, 'panel-index'),
                 readSetting(this._settings, 'panel-box'));

@@ -257,6 +257,10 @@
     padding-right: 2px;
 }
 
+.np-panel-text-alone .np-panel-label {
+    padding-left: 2px;
+}
+
 /* The player's own icon, in the corner of the album art. */
 .np-cover-badge {
     background-color: rgba(0, 0, 0, 0.45);

@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.0.4
+
+- New switch on the Panel page, Icon in the panel. Turn it off and the button
+  shows only the track, handy next to another visualiser extension. The icon
+  stays when there is no text.
+- The panel button has a right-click menu: Always Show in Top Bar, Show When
+  Active and Don't Show in Top Bar, and Settings to open the preferences. The
+  Menu key and Shift+F10 open it too. Don't Show in Top Bar hides the button
+  and the menu with it; the preferences bring it back. The same choice on the
+  Panel page is called Visibility now and uses the same three names.
+- A spectrum analyzer: columns that move with the sound itself, lowest notes
+  on the left, instead of bars that only pretend. A switch in its own group on
+  the Card page puts it in the top bar in place of the bars, and turning it off
+  brings the bars back in the style they had. The same group picks the shape
+  (segments, solid, or mirrored around the middle), the colours (the theme
+  colour, red at the top, green to red, or a rainbow), eight to thirty-two
+  columns, peak markers that hold for a moment, and the track next to the
+  spectrum while it is on, whatever the Panel page says, with the spectrum
+  kept beside it. The bars on the card follow the sound as well. A small
+  helper listens to the default output through GStreamer's PulseAudio plugin,
+  only while the icon is on screen and moving; without the plugin the icon
+  goes back to pretending. Before GNOME 50.2 the microphone indicator shows
+  while it listens.
+
 ## 1.0.3
 
 - GNOME Shell 51 is back on the supported list, now that it is out. The card

@@ -34,6 +34,17 @@
     <value value="1" nick="rounded"/>
     <value value="2" nick="rainbow"/>
   </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.spectrum-shape">
+    <value value="0" nick="segments"/>
+    <value value="1" nick="solid"/>
+    <value value="2" nick="mirrored"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.spectrum-colors">
+    <value value="0" nick="plain"/>
+    <value value="1" nick="classic"/>
+    <value value="2" nick="level"/>
+    <value value="3" nick="rainbow"/>
+  </enum>
   <enum id="org.gnome.shell.extensions.nowplaying.indicator-visibility">
     <value value="0" nick="always"/>
     <value value="1" nick="active"/>
@@ -41,6 +52,11 @@
   </enum>
   <enum id="org.gnome.shell.extensions.nowplaying.panel-text">
     <value value="0" nick="none"/>
+    <value value="1" nick="title"/>
+    <value value="2" nick="artist-title"/>
+  </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.spectrum-text">
+    <value value="0" nick="panel"/>
     <value value="1" nick="title"/>
     <value value="2" nick="artist-title"/>
   </enum>
@@ -102,6 +118,37 @@
       <default>true</default>
       <summary>Animate the equalizer icon</summary>
     </key>
+    <key name="show-spectrum" type="b">
+      <default>false</default>
+      <summary>Show the spectrum analyzer</summary>
+      <description>Columns that follow the sound take the place of the bars in the top bar, and the bars on the card follow the sound too. It only listens while the icon is animated. Turned off, the bars come back in their own style.</description>
+    </key>
+    <key name="spectrum-shape" enum="org.gnome.shell.extensions.nowplaying.spectrum-shape">
+      <default>'segments'</default>
+      <summary>Spectrum shape</summary>
+      <description>Columns of separate segments, solid columns, or solid columns that grow both ways from the middle.</description>
+    </key>
+    <key name="spectrum-colors" enum="org.gnome.shell.extensions.nowplaying.spectrum-colors">
+      <default>'classic'</default>
+      <summary>Spectrum colours</summary>
+      <description>The colour of the panel text, the same with a red top, green to yellow to red by height, or a colour of its own for every column.</description>
+    </key>
+    <key name="spectrum-columns" type="i">
+      <default>16</default>
+      <range min="8" max="32"/>
+      <summary>Spectrum columns</summary>
+      <description>How many columns the sound is split into, the lowest notes on the left and the highest on the right.</description>
+    </key>
+    <key name="spectrum-peaks" type="b">
+      <default>true</default>
+      <summary>Show the peaks</summary>
+      <description>Leave a mark at the top of each column for a moment after it falls.</description>
+    </key>
+    <key name="spectrum-text" enum="org.gnome.shell.extensions.nowplaying.spectrum-text">
+      <default>'panel'</default>
+      <summary>Track next to the spectrum</summary>
+      <description>While the spectrum is on, show the title, or the artist and the title, next to it; the spectrum stays even with the panel icon off. With panel, the panel text and icon settings decide.</description>
+    </key>
     <key name="cover-size" enum="org.gnome.shell.extensions.nowplaying.cover-size">
       <default>'medium'</default>
       <summary>Cover size</summary>
@@ -149,6 +196,11 @@
       <range min="60" max="600"/>
       <summary>Width of the panel text</summary>
       <description>Longest the panel text may get, in pixels. Anything beyond it scrolls.</description>
+    </key>
+    <key name="panel-icon" type="b">
+      <default>true</default>
+      <summary>Show the icon in the panel</summary>
+      <description>When off, only the track is shown. The icon still appears when there is no text.</description>
     </key>
     <key name="ignored-players" type="as">
       <default>[]</default>
