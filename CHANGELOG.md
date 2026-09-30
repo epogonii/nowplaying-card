@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5
+
+- The spectrum helper removes its timeout, stdin watch and bus handlers
+  before it exits, as the extensions.gnome.org review asked.
+
 ## 1.0.4
 
 - New switch on the Panel page, Icon in the panel. Turn it off and the button
