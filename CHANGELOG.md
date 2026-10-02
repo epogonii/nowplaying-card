@@ -8,6 +8,8 @@
   new picture is here. A picture that does not load is asked for twice more
   before the card settles for the player's icon, and a wide picture from the
   web fills the square the way a local one does.
+- The right-click menu marks the chosen item with a check mark instead of a
+  dot.
 - The spectrum helper starts with the `#!@GJS@ -m` line the
   extensions.gnome.org review asks of standalone GJS scripts.
 
