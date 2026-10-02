@@ -175,6 +175,10 @@ function builtinCount() {
 export default class ProbeQs extends Extension {
     enable() {
         this._ids = [];
+        if (GLib.getenv('NP_PROBE') === 'art') {
+            this._artSteps();
+            return;
+        }
 
         this._at(12, () => Main.panel.statusArea.quickSettings.menu.open(false));
 
@@ -1024,6 +1028,75 @@ export default class ProbeQs extends Extension {
             clickAt(panelButton());
         });
         this._at(106.3, () => ctx('left click over the menu (expect ctx=false menu=false)'));
+    }
+
+    // NP_PROBE=art, see run-nested-art.sh.
+    _artSteps() {
+        const name = card => card._player.busName.replace('org.mpris.MediaPlayer2.', '');
+        const find = bus => cards().find(c => name(c) === bus) ?? null;
+        const aspect = card => card._artAspect ? card._artAspect.toFixed(2) : 'null';
+        const describe = gicon => {
+            if (!gicon)
+                return 'NULL';
+            if (gicon instanceof Gio.BytesIcon)
+                return `BytesIcon(${gicon.get_bytes().get_size()})`;
+            if (gicon instanceof Gio.ThemedIcon)
+                return `ThemedIcon(${gicon.get_names()[0]})`;
+            return gicon.constructor.name;
+        };
+        const watched = new Map();
+
+        this._at(1, () => Main.panel.statusArea.quickSettings.menu.open(false));
+
+        for (let t = 1.5; t <= 10.5; t++) {
+            this._at(t, () => cards().filter(c => !watched.has(name(c))).forEach(card => {
+                const seen = {empty: 0, fallback: 0};
+                watched.set(name(card), seen);
+                log(`PROBE ART watch t=${t} ${name(card)} ` +
+                    `icon=${describe(card._cover.gicon)} (expect not NULL)`);
+                card._cover.connect('notify::gicon', () => {
+                    const gicon = card._cover.gicon;
+                    if (!gicon)
+                        seen.empty++;
+                    else if (!card._hasArtwork)
+                        seen.fallback++;
+                    log(`PROBE ART icon ${name(card)} ${describe(gicon)} ` +
+                        `art=${card._hasArtwork} aspect=${aspect(card)}`);
+                });
+            }));
+        }
+
+        this._at(20, () => {
+            for (const [bus, art, shape] of [
+                ['httpwide', true, '1.78'],
+                ['httpflaky', true, '1.00'],
+                ['httphang', true, '1.78'],
+                ['httpdead', false, 'null'],
+            ]) {
+                const card = find(bus);
+                if (!card) {
+                    log(`PROBE ART settled ${bus} missing`);
+                    continue;
+                }
+                const covers = card._cover.width >= card._coverTile.width &&
+                    card._cover.height >= card._coverTile.height;
+                log(`PROBE ART settled ${bus} art=${card._hasArtwork} aspect=${aspect(card)} ` +
+                    `icon=${describe(card._cover.gicon)} covers=${covers} ` +
+                    `empty=${watched.get(bus)?.empty} ` +
+                    `(expect art=${art} aspect=${shape} covers=${art} empty=0)`);
+            }
+            log(`PROBE ART gone cards=${cards().filter(c => name(c) === 'httpgone').length} ` +
+                '(expect 0)');
+        });
+
+        this._at(30, () => {
+            const card = find('httpswitch');
+            const seen = watched.get('httpswitch');
+            log(`PROBE ART switch empty=${seen?.empty} fallback=${seen?.fallback} ` +
+                `icon=${card ? describe(card._cover.gicon) : 'missing'} ` +
+                `aspect=${card ? aspect(card) : 'null'} ` +
+                '(expect empty=0 fallback=1 BytesIcon aspect=1.78)');
+        });
     }
 
     // Milliseconds underneath, so a step can sit between two whole seconds.

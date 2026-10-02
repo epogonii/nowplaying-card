@@ -8,6 +8,7 @@ import Clutter from 'gi://Clutter';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
+import Soup from 'gi://Soup';
 import Cairo from 'cairo';
 
 import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -78,10 +79,10 @@ const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(`
   </interface>
 </node>`);
 
-// How much of an inline (data: URL) cover is fed to the loader at a time while
-// it looks for the image header. Large enough that a JPEG carrying an EXIF
-// thumbnail still reports its size from the first chunk.
-const INLINE_ART_CHUNK = 64 * 1024;
+// How much of an in-memory cover (data: URL or fetched) is fed to the loader
+// at a time while it looks for the image header. Large enough that a JPEG
+// carrying an EXIF thumbnail still reports its size from the first chunk.
+const ART_CHUNK = 64 * 1024;
 const COVER_SIZE = 48;
 const COMPACT_COVER_SIZE = 40;
 const CONTROL_ICON_SIZE = 20;
@@ -96,8 +97,6 @@ const PANEL_CONTROL_ICON_SIZE = 14;
 // have to be answered by gestures of our own where the class exists.
 const HAS_CLICK_GESTURE = typeof Clutter.ClickGesture !== 'undefined';
 
-// GNOME 45 has no NO_DOT.
-const NO_DOT = PopupMenu.Ornament.NO_DOT ?? PopupMenu.Ornament.NONE;
 const POLL_MS = 1000;
 const SEEK_SETTLE_MS = 1000;
 const SEEK_GUARD_MS = 800;
@@ -129,6 +128,10 @@ const COVER_SIZES = {
 // for again a few times before the card settles for the player's icon.
 const ART_RETRY_INTERVAL = 250;
 const ART_RETRIES = 12;
+// Remote artwork is fetched here, not by GIO: gvfsd-http can hang on a dead
+// connection and St never reports a picture that failed to load.
+const REMOTE_ART_TIMEOUT = 10;
+const REMOTE_ART_TRIES = 3;
 // How much of the cover the player's own icon fills when a track brings no
 // artwork with it. All of it turns a logo into a poster.
 const FALLBACK_ICON_RATIO = 0.6;
@@ -1224,10 +1227,13 @@ const MediaCard = GObject.registerClass({
         this._closeMenu = closeMenu;
         this._coverUrl = null;
         this._coverApp = null;
+        this._artwork = null;
         this._hasArtwork = false;
         this._artAspect = null;
         this._artRetryId = null;
         this._artRetryTries = 0;
+        this._artSession = null;
+        this._artCancellable = null;
         this._coverGeometry = null;
         this._lengthUs = 0;
         this._positionUs = 0;
@@ -1580,14 +1586,26 @@ const MediaCard = GObject.registerClass({
         const coverUrl = this._player.trackCoverUrl;
         const app = this._player.app;
         if (coverUrl !== this._coverUrl || app !== this._coverApp) {
+            // A player recognised late changes only the icon, no new fetch.
+            const sameRemoteArt = coverUrl === this._coverUrl &&
+                this._isRemoteArt(coverUrl);
             this._coverUrl = coverUrl;
             this._coverApp = app;
             this._badge.gicon = app?.get_icon() ?? null;
-            const artwork = this._artworkIcon(coverUrl);
-            this._applyArtwork(artwork);
-            this._stopArtRetry();
-            if (this._artworkPending(coverUrl, artwork))
-                this._startArtRetry(coverUrl);
+            if (this._isRemoteArt(coverUrl)) {
+                // Keep what is on screen until the new picture is here.
+                this._applyArtwork(this._artwork);
+                if (!sameRemoteArt) {
+                    this._stopArtRetry();
+                    this._fetchArtwork(coverUrl, 1);
+                }
+            } else {
+                const artwork = this._artworkIcon(coverUrl);
+                this._applyArtwork(artwork);
+                this._stopArtRetry();
+                if (this._artworkPending(coverUrl, artwork))
+                    this._startArtRetry(coverUrl);
+            }
         }
 
         this._playButton.child.icon_name = this.playing
@@ -1686,12 +1704,8 @@ const MediaCard = GObject.registerClass({
         this._player.setVolume(this._volumeSlider.value);
     }
 
-    // Null when the player named no usable artwork. Players inside a sandbox
-    // point at files that only exist in their own filesystem, so a local file
-    // is checked before it is used.
-    // The icon to draw and the shape it came in, or null when the track brings
-    // no artwork at all. Artwork reaches us three ways: a path on disk, a URL
-    // to fetch, or the picture itself inline, which is what Telegram sends.
+    // A file on disk or an inline picture (Telegram). Sandboxed players can
+    // name files we cannot see, so the file is checked first.
     _artworkIcon(coverUrl) {
         if (!coverUrl)
             return null;
@@ -1711,10 +1725,50 @@ const MediaCard = GObject.registerClass({
             };
         }
 
-        // Measuring artwork that lives on a server would mean fetching it
-        // twice, so the box stays square until it arrives, which is the shape
-        // streaming services send anyway.
         return {gicon: new Gio.FileIcon({file}), aspect: null, path: null};
+    }
+
+    _isRemoteArt(coverUrl) {
+        return /^https?:\/\//i.test(coverUrl ?? '');
+    }
+
+    _fetchArtwork(coverUrl, tries) {
+        const message = Soup.Message.new('GET', coverUrl);
+        if (!message) {
+            this._applyArtwork(null);
+            return;
+        }
+
+        // Trailing space: libsoup appends its own name and version.
+        this._artSession ??= new Soup.Session({
+            timeout: REMOTE_ART_TIMEOUT,
+            user_agent: 'nowplaying-card ',
+        });
+        const cancellable = new Gio.Cancellable();
+        this._artCancellable = cancellable;
+        this._artSession.send_and_read_async(message, GLib.PRIORITY_DEFAULT,
+            cancellable, (session, result) => {
+                let artwork = null;
+                try {
+                    const bytes = session.send_and_read_finish(result);
+                    if (message.get_status() === Soup.Status.OK)
+                        artwork = this._bytesArtwork(bytes);
+                } catch {
+                    artwork = null;
+                }
+                if (cancellable.is_cancelled())
+                    return;
+                this._artCancellable = null;
+
+                if (artwork || tries >= REMOTE_ART_TRIES) {
+                    this._applyArtwork(artwork);
+                    return;
+                }
+
+                // Next try on a fresh connection.
+                session.abort();
+                this._fetchArtwork(coverUrl, tries + 1);
+            });
     }
 
     // Header only: the picture is not decoded to be measured.
@@ -1729,6 +1783,7 @@ const MediaCard = GObject.registerClass({
     // Everything the artwork decides in one place, so a picture that turns up
     // late lands the same way as one that was there from the start.
     _applyArtwork(artwork) {
+        this._artwork = artwork;
         this._hasArtwork = artwork !== null;
         this._artAspect = artwork?.aspect ?? null;
         this._cover.gicon = artwork?.gicon ?? this._fallbackIcon(this._coverApp);
@@ -1774,6 +1829,8 @@ const MediaCard = GObject.registerClass({
             GLib.source_remove(this._artRetryId);
             this._artRetryId = null;
         }
+        this._artCancellable?.cancel();
+        this._artCancellable = null;
     }
 
     // data:[<mediatype>][;base64],<payload>. GIO opens no such file, so the
@@ -1795,6 +1852,10 @@ const MediaCard = GObject.registerClass({
             return null;
         }
 
+        return this._bytesArtwork(bytes);
+    }
+
+    _bytesArtwork(bytes) {
         // Bytes that no loader recognises are not artwork: drawing them would
         // leave an empty square where the player's own icon belongs. The
         // loader is fed only until it has seen the header, which is all the
@@ -1809,8 +1870,8 @@ const MediaCard = GObject.registerClass({
         });
         try {
             const size = bytes.get_size();
-            for (let offset = 0; offset < size && width === 0; offset += INLINE_ART_CHUNK) {
-                const length = Math.min(INLINE_ART_CHUNK, size - offset);
+            for (let offset = 0; offset < size && width === 0; offset += ART_CHUNK) {
+                const length = Math.min(ART_CHUNK, size - offset);
                 loader.write_bytes(GLib.Bytes.new_from_bytes(bytes, offset, length));
             }
         } catch {
@@ -2082,6 +2143,7 @@ const MediaCard = GObject.registerClass({
     _onDestroy() {
         this._stopPoll();
         this._stopArtRetry();
+        this._artSession?.abort();
         if (this._seekPendingId) {
             GLib.source_remove(this._seekPendingId);
             this._seekPendingId = null;
@@ -3136,7 +3198,8 @@ class NowPlayingButton extends PanelMenu.Button {
     _syncContextMenu() {
         const current = readSetting(this._settings, 'indicator-visibility');
         for (const [value, item] of this._visibilityItems)
-            item.setOrnament(value === current ? PopupMenu.Ornament.DOT : NO_DOT);
+            item.setOrnament(value === current
+                ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE);
     }
 
     // A button of its own inside the panel button. It answers the press and the

@@ -1,9 +1,10 @@
 // MPRIS stub. argv: suffix entry(|none) identity skip(yes|no) trackid(yes|no)
 //                   title artUrl(|none) window(yes|no) extras(yes|no) pause(yes|no)
+//                   [seconds:artUrl,...]
 imports.gi.versions.Gtk = '4.0';
 const {Gio, GLib} = imports.gi;
 const [suffix, entry, identity, canSkip, withTrackId, title, artUrl, window_,
-       extras, pauseCycle] = ARGV;
+       extras, pauseCycle, artSwitches] = ARGV;
 const hasExtras = extras === 'yes';
 
 const ROOT_PROPS = entry === 'none'
@@ -55,6 +56,30 @@ if (artUrl && artUrl !== 'none')
   meta['mpris:artUrl'] = new GLib.Variant('s', artUrl);
 if (withTrackId === 'yes')
   meta['mpris:trackid'] = new GLib.Variant('o', '/org/test/track/1');
+let metadata = new GLib.Variant('a{sv}', meta);
+let switching = false;
+
+const now = () => GLib.DateTime.new_now_local().format('%T.%f');
+
+// Counted from the first time the shell reads the metadata.
+function startSwitches() {
+  if (switching || !artSwitches)
+    return;
+  switching = true;
+  print(`stub-${suffix}: switches start ${now()}`);
+  artSwitches.split(',').forEach((step, i) => {
+    const colon = step.indexOf(':');
+    const url = step.slice(colon + 1);
+    GLib.timeout_add(GLib.PRIORITY_DEFAULT, Number(step.slice(0, colon)) * 1000, () => {
+      meta['mpris:artUrl'] = new GLib.Variant('s', url);
+      meta['xesam:title'] = new GLib.Variant('s', `${title} ${i + 2}`);
+      metadata = new GLib.Variant('a{sv}', meta);
+      print(`stub-${suffix}: artUrl=${url} ${now()}`);
+      playerExp.emit_property_changed('Metadata', metadata);
+      return GLib.SOURCE_REMOVE;
+    });
+  });
+}
 
 const root = {
   Identity: identity, CanQuit: true, CanRaise: true,
@@ -75,7 +100,10 @@ const player = {
     print(`stub-${suffix}: Volume=${value.toFixed(3)}`);
     playerExp.emit_property_changed('Volume', new GLib.Variant('d', volume));
   },
-  Metadata: new GLib.Variant('a{sv}', meta),
+  get Metadata() {
+    startSwitches();
+    return metadata;
+  },
   CanGoNext: skip, CanGoPrevious: skip, CanPlay: true, CanPause: true,
   CanSeek: true, CanControl: true,
   Play(){}, Pause(){}, PlayPause(){ print(`stub-${suffix}: PlayPause`); },
