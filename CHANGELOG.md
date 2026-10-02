@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.6
+
+- Cover art that a player gives as a web address, the way Spotify does, is
+  downloaded by the extension itself. The card no longer shows an empty
+  square while it waits: the old cover, or the player's icon, stays until the
+  new picture is here. A picture that does not load is asked for twice more
+  before the card settles for the player's icon, and a wide picture from the
+  web fills the square the way a local one does.
+- The spectrum helper starts with the `#!@GJS@ -m` line the
+  extensions.gnome.org review asks of standalone GJS scripts.
+
 ## 1.0.5
 
 - The spectrum helper removes its timeout, stdin watch and bus handlers
