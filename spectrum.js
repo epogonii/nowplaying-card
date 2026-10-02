@@ -1,3 +1,4 @@
+#!@GJS@ -m
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 // Prints how loud each band of the default output is, 0 to 1000, lowest band
