@@ -5,6 +5,7 @@ import St from 'gi://St';
 import Shell from 'gi://Shell';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 const UUID = 'nowplaying@epogonii.github.io';
 
@@ -939,11 +940,12 @@ export default class ProbeQs extends Extension {
         // so 'always' is what keeps the button up.
         const ctx = tag => {
             const btn = panelButton();
-            const dots = [...btn._visibilityItems]
-                .map(([value, item]) => `${value}=${item._ornament}`).join(' ');
+            const marks = [...btn._visibilityItems].map(([value, item]) => `${value}=` +
+                Object.keys(PopupMenu.Ornament).find(k => PopupMenu.Ornament[k] === item._ornament))
+                .join(' ');
             log(`PROBE CTX ${tag} ctx=${btn._contextMenu.isOpen} menu=${btn.menu.isOpen} ` +
                 `active=${btn.has_style_pseudo_class('active')} visible=${btn.visible} ` +
-                `setting=${stateObj()._settings.get_string('indicator-visibility')} ${dots}`);
+                `setting=${stateObj()._settings.get_string('indicator-visibility')} ${marks}`);
         };
         const rightClick = () => clickAt(panelButton(), Clutter.BUTTON_SECONDARY);
         const pick = value => clickAt(panelButton()._visibilityItems.get(value));
@@ -956,13 +958,13 @@ export default class ProbeQs extends Extension {
             stateObj()._settings.set_string('location', 'panel');
         });
         this._at(97.5, rightClick);
-        this._at(97.9, () => ctx('open (expect true false true, always=1 active=4 never=4)'));
+        this._at(97.9, () => ctx('open (expect true false true, always=CHECK active=NONE never=NONE)'));
         this._at(98.1, rightClick);
         this._at(98.5, () => ctx('second right-click (expect false false false)'));
 
         this._at(98.7, rightClick);
         this._at(99.1, () => pick('active'));
-        this._at(99.5, () => ctx('picked active (expect ctx=false visible=false, active=1)'));
+        this._at(99.5, () => ctx('picked active (expect ctx=false visible=false, active=CHECK)'));
         this._at(99.7, () => stateObj()._settings.set_string('indicator-visibility', 'always'));
 
         this._at(100, () => {
@@ -998,7 +1000,7 @@ export default class ProbeQs extends Extension {
         this._at(102.5, rightClick);
         this._at(102.9, () => pick('never'));
         this._at(103.3, () => {
-            ctx('picked never (expect ctx=false visible=false, never=1)');
+            ctx('picked never (expect ctx=false visible=false, never=CHECK)');
             stateObj()._settings.set_string('indicator-visibility', 'always');
         });
 
