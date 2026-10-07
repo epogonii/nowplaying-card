@@ -1650,6 +1650,7 @@ const MediaCard = GObject.registerClass({
         this._seekBox.visible = !compact && options.showProgress;
         this._seekBox.opacity = this._lengthUs > 0 ? 255 : 0;
         this._slider.can_focus = this._lengthUs > 0;
+        this._slider.reactive = player.canSeek && this._lengthUs > 0;
         // The badge says which player a card belongs to, folded or not.
         this._badge.icon_size = compact ? BADGE_SIZE : FULL_BADGE_SIZE;
         this._placeBadge();
@@ -1709,7 +1710,6 @@ const MediaCard = GObject.registerClass({
         // A player that cannot skip gets no skip buttons at all.
         this._prevButton.visible = this._player.canGoPrevious;
         this._nextButton.visible = this._player.canGoNext;
-        this._slider.reactive = this._player.canSeek;
 
         this._syncShuffle();
         this._syncLoop();
