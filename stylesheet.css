@@ -164,8 +164,8 @@
     min-width: 20em;
 }
 
-/* One surface: the menu is the card's background. */
-.np-menu .np-stack .np-card {
+/* One surface: a lone card uses the menu as its background. */
+.np-menu .np-stack-single .np-card {
     background-color: transparent;
 }
 

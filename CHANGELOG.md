@@ -4,6 +4,8 @@
 
 - The equalizer and the scrolling titles disconnect from the animations
   setting when they are destroyed, as the extensions.gnome.org review asked.
+- Several players in the popup are separate tiles again. Only a lone card
+  uses the popup as its background.
 
 ## 1.0.7
 

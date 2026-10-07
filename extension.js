@@ -2415,6 +2415,11 @@ class CardStack extends St.BoxLayout {
         // rest as one-line rows. A fixed size from the preferences is a fixed
         // size, and nothing expands.
         const accordion = this._layout === 'auto' && cards.length > 1;
+        // A lone card shares the popup's background, several keep their tiles.
+        if (cards.length > 1)
+            this.remove_style_class_name('np-stack-single');
+        else
+            this.add_style_class_name('np-stack-single');
         this._expandedCard = accordion ? this._expandedCandidate(cards) : null;
 
         cards.forEach(card => {
