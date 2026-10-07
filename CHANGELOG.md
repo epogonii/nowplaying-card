@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.0.7
+
+- The cover art has rounded corners. St does not clip a picture to the
+  rounded tile it sits in, so a shader cuts the corners instead.
+- A shell theme that is light while the system style is dark, or the other
+  way round, no longer leaves the card with fills and dim text meant for
+  the other background: the card follows the colour of its own text (#2).
+- The popup is a single surface instead of a card inside a menu, with the
+  cover as tall as the text beside it, skip arrows and a slimmer pause
+  spread over their row, and times that read 01:57 and −01:48 in a
+  smaller size.
+- A track without an artist or a length keeps the empty row, so the card
+  stays one size from song to song.
+- Cover size changes the cover again: medium is as tall as the text, small
+  and large are a quarter smaller and larger, and a larger cover widens the
+  card instead of pushing the text out.
+- The speaker in front of the volume slider mutes, and a second click
+  brings the level back.
+- A long title keeps its ellipsis when animations are turned off, and
+  opening the popup no longer makes Clutter warn about stage views.
+
 ## 1.0.6
 
 - Cover art that a player gives as a web address, the way Spotify does, is
