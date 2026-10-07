@@ -5,6 +5,7 @@ import St from 'gi://St';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
@@ -1196,6 +1197,56 @@ function animatePress(button, nudge) {
     });
 }
 
+// border-radius doesn't clip children in St, so the cover art gets its corners
+// cut by a shader. GNOME 51 replaced Shell.GLSLEffect with Clutter.ShaderEffect.
+const COVER_CLIP_DECLS = 'uniform vec2 size; uniform vec4 box; uniform float radius;';
+const COVER_CLIP_CODE = `
+vec2 half_box = (box.zw - box.xy) * 0.5;
+vec2 q = abs(cogl_tex_coord_in[0].xy * size - box.xy - half_box) - half_box + radius;
+float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+cogl_color_out *= clamp(0.5 - d, 0.0, 1.0);
+`;
+
+// Offscreen effects pad the actor, see _clutter_actor_box_enlarge_for_effects().
+const effectPadding = length => Math.round(length) + 3 - Math.ceil(length + 0.75);
+
+class CoverClip extends (Shell.GLSLEffect ?? Clutter.ShaderEffect) {
+    vfunc_paint_target(...args) {
+        const tile = this.get_actor();
+        const scale = tile.get_resource_scale();
+        const [x, y] = [tile.width, tile.height].map(l => effectPadding(l) * scale);
+        const [, width, height] = this.get_target_size();
+        const radius = tile.get_theme_node().get_border_radius(St.Corner.TOPLEFT);
+
+        this._setUniform('size', [width, height]);
+        this._setUniform('box', [x, y, x + tile.width * scale, y + tile.height * scale]);
+        this._setUniform('radius', [radius * scale]);
+        super.vfunc_paint_target(...args);
+    }
+
+    _setUniform(name, values) {
+        const uniform = Shell.GLSLEffect ? this.get_uniform_location(name) : name;
+        this.set_uniform_float(uniform, values.length, values);
+    }
+}
+
+// registerClass() rejects a vfunc the parent lacks, so only one is added.
+// Not by assignment: that makes GJS resolve it on the parent, which throws.
+if (Shell.GLSLEffect) {
+    Object.defineProperty(CoverClip.prototype, 'vfunc_build_pipeline', {
+        value() {
+            this.add_glsl_snippet(Shell.SnippetHook?.FRAGMENT ?? Cogl.SnippetHook.FRAGMENT,
+                COVER_CLIP_DECLS, COVER_CLIP_CODE, false);
+        },
+    });
+} else {
+    Object.defineProperty(CoverClip.prototype, 'vfunc_get_static_snippet', {
+        value: () => Cogl.Snippet.new(Cogl.SnippetHook.FRAGMENT,
+            COVER_CLIP_DECLS, COVER_CLIP_CODE),
+    });
+}
+GObject.registerClass(CoverClip);
+
 // What a card looks like until the model hands it the preferences; a card
 // built during startup is never left without an answer.
 const CARD_OPTIONS = {
@@ -1282,6 +1333,7 @@ const MediaCard = GObject.registerClass({
             layout_manager: new Clutter.FixedLayout(),
             clip_to_allocation: true,
         });
+        coverBin.add_effect(new CoverClip());
         this._coverTile = coverBin;
         coverBin.add_child(this._cover);
         coverBin.add_child(this._badge);
