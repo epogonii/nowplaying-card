@@ -21,6 +21,8 @@
   brings the level back.
 - A long title keeps its ellipsis when animations are turned off, and
   opening the popup no longer makes Clutter warn about stage views.
+- The equalizer and the scrolling titles disconnect from the animations
+  setting when they are destroyed, as the extensions.gnome.org review asked.
 
 ## 1.0.6
 
