@@ -207,6 +207,23 @@ function scaleFactor() {
     return St.ThemeContext.get_for_stage(global.stage).scale_factor || 1;
 }
 
+// The shell loads stylesheet-dark.css or -light.css by the style it thinks it
+// has, and a custom shell theme can disagree (#2). Go by the text colour.
+function followInk(widget) {
+    widget.connect('style-changed', () => {
+        const color = widget.peek_theme_node()?.get_foreground_color();
+        if (!color)
+            return;
+        const lightInk = (color.red + color.green + color.blue) / 3 > 127;
+        const [tone, other] = lightInk
+            ? ['np-dark', 'np-light'] : ['np-light', 'np-dark'];
+        if (widget.has_style_class_name(tone))
+            return;
+        widget.add_style_class_name(tone);
+        widget.remove_style_class_name(other);
+    });
+}
+
 const N_BARS = 3;
 const BAR_WIDTH = 3;
 const BAR_GAP = 2;
@@ -2246,6 +2263,7 @@ class CardStack extends St.BoxLayout {
         });
         this.add_child(this._placeholder);
 
+        followInk(this);
         this._syncVisibility();
     }
 
@@ -3132,6 +3150,7 @@ const NowPlayingButton = GObject.registerClass(
 class NowPlayingButton extends PanelMenu.Button {
     _init(settings, openPreferences) {
         super._init(0.5, _('Now Playing'));
+        followInk(this);
 
         this._settings = settings;
         this._scrollDelta = 0;

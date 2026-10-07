@@ -267,3 +267,32 @@
     border-radius: 99px;
     padding: 1px;
 }
+
+/* For a shell theme that disagrees with the light/dark setting (#2):
+   the extension marks the card and the button by their text colour. */
+.np-dark .np-card { background-color: rgba(255, 255, 255, 0.08); }
+.np-dark .np-cover-empty { background-color: rgba(255, 255, 255, 0.08); }
+.np-dark .np-subtitle { color: rgba(255, 255, 255, 0.6); }
+.np-dark .np-time { color: rgba(255, 255, 255, 0.6); }
+.np-dark .np-control:focus { background-color: rgba(255, 255, 255, 0.14); }
+.np-dark .np-control:insensitive { color: rgba(255, 255, 255, 0.4); }
+.np-dark .np-card-expandable:hover, .np-dark .np-card-expandable:focus { background-color: rgba(255, 255, 255, 0.14); }
+.np-dark .np-placeholder { color: rgba(255, 255, 255, 0.6); }
+.np-dark .np-cover-button:hover .np-cover, .np-dark .np-cover-button:focus .np-cover { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45); }
+.np-dark .np-card-equalizer { color: rgba(255, 255, 255, 0.4); }
+.np-dark .np-volume-icon { color: rgba(255, 255, 255, 0.6); }
+.np-dark .np-control-off { color: rgba(255, 255, 255, 0.4); }
+.np-dark .np-panel-control:focus { background-color: rgba(255, 255, 255, 0.14); }
+.np-light .np-card { background-color: rgba(0, 0, 0, 0.06); }
+.np-light .np-cover-empty { background-color: rgba(0, 0, 0, 0.06); }
+.np-light .np-subtitle { color: rgba(0, 0, 0, 0.55); }
+.np-light .np-time { color: rgba(0, 0, 0, 0.55); }
+.np-light .np-control:focus { background-color: rgba(0, 0, 0, 0.10); }
+.np-light .np-control:insensitive { color: rgba(0, 0, 0, 0.35); }
+.np-light .np-card-expandable:hover, .np-light .np-card-expandable:focus { background-color: rgba(0, 0, 0, 0.10); }
+.np-light .np-placeholder { color: rgba(0, 0, 0, 0.55); }
+.np-light .np-cover-button:hover .np-cover, .np-light .np-cover-button:focus .np-cover { box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35); }
+.np-light .np-card-equalizer { color: rgba(0, 0, 0, 0.35); }
+.np-light .np-volume-icon { color: rgba(0, 0, 0, 0.55); }
+.np-light .np-control-off { color: rgba(0, 0, 0, 0.35); }
+.np-light .np-panel-control:focus { background-color: rgba(0, 0, 0, 0.10); }
