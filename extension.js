@@ -1318,6 +1318,7 @@ const MediaCard = GObject.registerClass({
         this._settingVolume = false;
         this._volumePendingId = null;
         this._volumeGuardUntil = 0;
+        this._unmutedVolume = 1;
         this._pollId = null;
         this._seekPendingId = null;
         this._ignorePositionUntil = 0;
@@ -1471,7 +1472,7 @@ const MediaCard = GObject.registerClass({
             const value = this._volumeSlider.value;
             if (value > 0.001)
                 this._unmutedVolume = value;
-            this._volumeSlider.value = value > 0.001 ? 0 : this._unmutedVolume ?? 1;
+            this._volumeSlider.value = value > 0.001 ? 0 : this._unmutedVolume;
         });
         this._volumeBox.add_child(muteButton);
 
@@ -1755,6 +1756,7 @@ const MediaCard = GObject.registerClass({
         this._volumeSlider.value = Math.max(0, Math.min(1, volume));
         this._settingVolume = false;
         this._syncVolumeIcon();
+        this._keepUnmutedVolume();
     }
 
     _syncVolumeIcon() {
@@ -1794,7 +1796,15 @@ const MediaCard = GObject.registerClass({
 
     _pushVolume() {
         this._volumeGuardUntil = GLib.get_monotonic_time() + VOLUME_GUARD_MS * 1000;
+        this._keepUnmutedVolume();
         this._player.setVolume(this._volumeSlider.value);
+    }
+
+    // Only levels the player actually got, not the ones a drag down to zero
+    // passes on its way.
+    _keepUnmutedVolume() {
+        if (this._volumeSlider.value > 0.001)
+            this._unmutedVolume = this._volumeSlider.value;
     }
 
     // A file on disk or an inline picture (Telegram). Sandboxed players can
