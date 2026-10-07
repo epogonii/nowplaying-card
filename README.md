@@ -30,7 +30,7 @@ player.
 The card in its own popup, opened from the panel button:
 
 <p align="center">
-  <img src="docs/screenshots/card.png" width="700" alt="A card with cover art, transport controls and a progress bar">
+  <img src="docs/screenshots/card.png" width="560" alt="A card with cover art, transport controls and a progress bar">
 </p>
 
 Several players at once: the one playing keeps the open card, the rest wait as
