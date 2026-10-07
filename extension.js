@@ -343,6 +343,7 @@ class EqualizerIcon extends St.DrawingArea {
             this._stopTimer();
             this._letGo();
             this._analyzer = null;
+            St.Settings.get().disconnectObject(this);
         });
     }
 
@@ -998,7 +999,10 @@ class ScrollingLabel extends St.Widget {
         this._walkText = null;
 
         this.connect('notify::mapped', () => this._restart());
-        this.connect('destroy', () => this._stop());
+        this.connect('destroy', () => {
+            this._stop();
+            St.Settings.get().disconnectObject(this);
+        });
         // Without animations the text keeps its ellipsis instead of walking.
         St.Settings.get().connectObject('notify::enable-animations',
             () => this.queue_relayout(), this);
