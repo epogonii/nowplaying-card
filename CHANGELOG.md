@@ -6,11 +6,12 @@
   rounded tile it sits in, so a shader cuts the corners instead.
 - A shell theme that is light while the system style is dark, or the other
   way round, no longer leaves the card with fills and dim text meant for
-  the other background: the card follows the colour of its own text (#2).
+  the other background: the card and the panel button follow the colour of
+  their own text (#2).
 - The popup is a single surface instead of a card inside a menu, with the
   cover as tall as the text beside it, skip arrows and a slimmer pause
   spread over their row, and times that read 01:57 and −01:48 in a
-  smaller size.
+  smaller size. The skip buttons in the panel get the same arrows.
 - A track without an artist or a length keeps the empty row, so the card
   stays one size from song to song.
 - Cover size changes the cover again: medium is as tall as the text, small
