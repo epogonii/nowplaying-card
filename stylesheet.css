@@ -74,13 +74,13 @@
 }
 
 .np-time {
-    font-size: 0.8em;
+    font-size: 0.65em;
     min-width: 2.6em;
     color: rgba(255, 255, 255, 0.6); /* np-var: dim */
 }
 
 .np-controls {
-    spacing: 12px;
+    spacing: 0;
 }
 
 .np-control {
@@ -144,7 +144,7 @@
 }
 
 .np-top-row {
-    spacing: 12px;
+    spacing: 14px;
 }
 
 /* Everything that is not the cover: text, transport, seek bar. */
@@ -154,15 +154,23 @@
 
 /* Own popup: the card carries all the padding, so the menu adds none. */
 .np-menu {
-    padding: 6px;
+    padding: 3px;
     spacing: 6px;
 }
 
-/* One width whatever the track: a popup that followed its own text would
-   change size on every song. In Quick Settings the grid sets the width. */
+/* One width whatever the track: the text asks for a fixed share, so only a
+   larger cover widens the card. In Quick Settings the grid sets the width. */
 .np-menu .np-card {
-    min-width: 24em;
-    max-width: 24em;
+    min-width: 20em;
+}
+
+/* One surface: the menu is the card's background. */
+.np-menu .np-stack .np-card {
+    background-color: transparent;
+}
+
+.np-stack .np-card-expandable:hover, .np-stack .np-card-expandable:focus {
+    background-color: rgba(127, 127, 127, 0.2); /* np-var: hover */
 }
 
 .np-placeholder {
@@ -188,7 +196,7 @@
    In the top bar there is nothing to hold open, so no floor there: a short
    title would only leave a gap between itself and the transport buttons. */
 .np-card .np-scroll {
-    min-width: 11em;
+    min-width: 9em;
 }
 
 .np-card-compact .np-scroll {
@@ -205,6 +213,10 @@
 .np-volume-box {
     spacing: 8px;
     padding: 0 2px;
+}
+
+.np-volume-button {
+    padding: 0;
 }
 
 .np-volume-icon {

@@ -173,7 +173,7 @@ Four pages, in the order the window shows them.
 | Card size | Accordion with several players, always full, or always compact |
 | Cards at once | How many players the popup shows, one to ten |
 | Playing player first | Keep the card that is playing at the top |
-| Cover size | Smallest artwork in a full card; it grows to the height of the card |
+| Cover size | Artwork in a full card; medium is as tall as the text beside it |
 | Show the progress bar | Position and length of the track |
 | Show the volume slider | For players that carry a volume of their own |
 | Show shuffle and repeat | For players that support them |

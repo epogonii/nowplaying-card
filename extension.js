@@ -87,7 +87,9 @@ const ART_CHUNK = 64 * 1024;
 const COVER_SIZE = 48;
 const COMPACT_COVER_SIZE = 40;
 const CONTROL_ICON_SIZE = 20;
-const PLAY_ICON_SIZE = 26;
+// The skip arrows are wide and flat, so they get more room than the pause.
+const SKIP_ICON_SIZE = 24;
+const PLAY_ICON_SIZE = 22;
 const COMPACT_CONTROL_ICON_SIZE = 16;
 const COMPACT_PLAY_ICON_SIZE = 20;
 const PANEL_CONTROL_ICON_SIZE = 14;
@@ -113,11 +115,12 @@ const VOLUME_STEP = 0.05;
 const VOLUME_COALESCE_MS = 100;
 const VOLUME_GUARD_MS = 800;
 
-// The cover sizes the preferences offer, in pixels.
+// The cover sizes the preferences offer, against the height of the text
+// beside the cover. Medium is just as tall.
 const COVER_SIZES = {
-    'small': 56,
-    'medium': 72,
-    'large': 96,
+    'small': 0.75,
+    'medium': 1,
+    'large': 1.25,
 };
 
 // A picture that is not square is scaled until it covers the square the card
@@ -996,6 +999,9 @@ class ScrollingLabel extends St.Widget {
 
         this.connect('notify::mapped', () => this._restart());
         this.connect('destroy', () => this._stop());
+        // Without animations the text keeps its ellipsis instead of walking.
+        St.Settings.get().connectObject('notify::enable-animations',
+            () => this.queue_relayout(), this);
     }
 
     set text(text) {
@@ -1069,7 +1075,7 @@ class ScrollingLabel extends St.Widget {
         // An ellipsizing label still asks for the whole text as its natural
         // width, so the request itself says how much does not fit.
         const [, natural] = this._label.get_preferred_width(height);
-        const overflow = this._scroll
+        const overflow = this._scroll && St.Settings.get().enable_animations
             ? Math.max(0, Math.ceil(natural - width)) : 0;
 
         this.set_allocation(box);
@@ -1373,8 +1379,9 @@ const MediaCard = GObject.registerClass({
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._topRow.add_child(this._column);
-        this._column.connectObject('notify::height',
-            () => this._syncCover(), this);
+        // Not on the column's notify::height: that comes in the middle of an
+        // allocation, and resizing the cover there makes Clutter complain.
+        this.connect('style-changed', () => this._syncCover());
         this.connect('notify::mapped', () => this._syncCover());
 
         // Both squares move the corner the badge rides on.
@@ -1452,9 +1459,21 @@ const MediaCard = GObject.registerClass({
             style_class: 'np-volume-icon',
             icon_name: 'audio-volume-high-symbolic',
             icon_size: VOLUME_ICON_SIZE,
+        });
+        // The speaker mutes, and a second click brings the level back.
+        const muteButton = new St.Button({
+            style_class: 'np-control np-volume-button',
+            can_focus: true,
+            child: this._volumeIcon,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._volumeBox.add_child(this._volumeIcon);
+        muteButton.connect('clicked', () => {
+            const value = this._volumeSlider.value;
+            if (value > 0.001)
+                this._unmutedVolume = value;
+            this._volumeSlider.value = value > 0.001 ? 0 : this._unmutedVolume ?? 1;
+        });
+        this._volumeBox.add_child(muteButton);
 
         this._volumeSlider = new Slider.Slider(0);
         this._volumeSlider.add_style_class_name('np-volume');
@@ -1471,18 +1490,17 @@ const MediaCard = GObject.registerClass({
         this._controls = new St.BoxLayout({
             style_class: 'np-controls',
             x_expand: true,
-            x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
         });
         this._column.insert_child_below(this._controls, this._seekBox);
 
         this._shuffleButton = this._addControl(this._controls, 'media-playlist-shuffle-symbolic',
             CONTROL_ICON_SIZE, () => this._player.setShuffle(!this._player.shuffle));
-        this._prevButton = this._addControl(this._controls, 'media-skip-backward-symbolic',
+        this._prevButton = this._addControl(this._controls, 'media-seek-backward-symbolic',
             CONTROL_ICON_SIZE, () => this._player.previous(), -PRESS_NUDGE);
         this._playButton = this._addControl(this._controls, 'media-playback-start-symbolic',
             PLAY_ICON_SIZE, () => this._player.playPause());
-        this._nextButton = this._addControl(this._controls, 'media-skip-forward-symbolic',
+        this._nextButton = this._addControl(this._controls, 'media-seek-forward-symbolic',
             CONTROL_ICON_SIZE, () => this._player.next(), PRESS_NUDGE);
         this._loopButton = this._addControl(this._controls, 'media-playlist-repeat-symbolic',
             CONTROL_ICON_SIZE, () => this._cycleLoop());
@@ -1523,9 +1541,12 @@ const MediaCard = GObject.registerClass({
     }
 
     _addControl(parent, iconName, iconSize, callback, nudge = 0) {
+        // A full card spreads the buttons over its row.
         const button = new St.Button({
             style_class: 'np-control',
             can_focus: true,
+            x_expand: true,
+            x_align: Clutter.ActorAlign.CENTER,
             child: new St.Icon({
                 style_class: 'popup-menu-icon',
                 icon_name: iconName,
@@ -1593,9 +1614,6 @@ const MediaCard = GObject.registerClass({
                 this.remove_style_class_name('np-card-compact');
         }
 
-        this._syncCover();
-        this._coverButton.y_align = compact
-            ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.START;
         this._times.visible = !compact;
         this._title.scroll = options.scrollText;
         this._subtitle.scroll = options.scrollText;
@@ -1609,8 +1627,9 @@ const MediaCard = GObject.registerClass({
 
         const controlSize = compact
             ? COMPACT_CONTROL_ICON_SIZE : CONTROL_ICON_SIZE;
-        this._prevButton.child.icon_size = controlSize;
-        this._nextButton.child.icon_size = controlSize;
+        const skipSize = compact ? COMPACT_CONTROL_ICON_SIZE : SKIP_ICON_SIZE;
+        this._prevButton.child.icon_size = skipSize;
+        this._nextButton.child.icon_size = skipSize;
         this._shuffleButton.child.icon_size = controlSize;
         this._loopButton.child.icon_size = controlSize;
         this._playButton.child.icon_size = compact
@@ -1624,12 +1643,18 @@ const MediaCard = GObject.registerClass({
 
         this._volumeBox.visible = !compact && options.showVolume &&
             player.hasVolume;
-        this._seekBox.visible = !compact && options.showProgress &&
-            this._lengthUs > 0;
+        // Empty rows keep their place, so the card stays one size from track
+        // to track. Folded, the cover is taller than both lines anyway.
+        this._subtitle.visible = !compact || this._subtitle.text !== '';
+        this._seekBox.visible = !compact && options.showProgress;
+        this._seekBox.opacity = this._lengthUs > 0 ? 255 : 0;
+        this._slider.can_focus = this._lengthUs > 0;
         // The badge says which player a card belongs to, folded or not.
         this._badge.icon_size = compact ? BADGE_SIZE : FULL_BADGE_SIZE;
         this._placeBadge();
         this._badge.visible = this._hasArtwork && !!this._badge.gicon;
+        // Last, once every row above knows whether it is shown.
+        this._syncCover();
     }
 
     get playing() {
@@ -1648,7 +1673,6 @@ const MediaCard = GObject.registerClass({
         this._title.text = this._player.trackTitle || '';
         const subtitle = this._subtitleText();
         this._subtitle.text = subtitle;
-        this._subtitle.visible = subtitle !== '';
 
         // Players emit 'changed' for every position or volume tweak; only
         // touch the texture when the artwork or the fallback changed.
@@ -1975,9 +1999,7 @@ const MediaCard = GObject.registerClass({
             .join(' - ');
     }
 
-    // Art as tall as everything standing next to it, in the shape it came in.
-    // The size from the preferences is the floor and not the answer: a card
-    // showing a seek bar and the times is taller than any of the three sizes.
+    // Art sized against everything standing next to it, in the shape it came in.
     _syncCover() {
         if (!this._options || this._syncingCover)
             return;
@@ -1988,10 +2010,11 @@ const MediaCard = GObject.registerClass({
             return;
 
         const scale = scaleFactor();
-        const beside = Math.round(this._column.height / scale);
+        const [, columnHeight] = this._column.get_preferred_height(-1);
+        const beside = Math.round(columnHeight / scale);
         const box = this._compact
             ? COMPACT_COVER_SIZE
-            : Math.max(this._options.coverSize, beside);
+            : Math.round(beside * this._options.coverSize);
 
         // The tile is a square as tall as the card, and the picture covers it:
         // its shorter side matches the square, the longer one runs past the
@@ -2087,7 +2110,7 @@ const MediaCard = GObject.registerClass({
     _showTime(positionUs) {
         this._elapsedLabel.text = formatTime(positionUs);
         this._lengthLabel.text = this._lengthUs > 0
-            ? `-${formatTime(Math.max(0, this._lengthUs - positionUs))}` : '';
+            ? `−${formatTime(Math.max(0, this._lengthUs - positionUs))}` : '';
     }
 
     // Players report every seek, including the ones triggered elsewhere.
@@ -2237,7 +2260,7 @@ function formatTime(microseconds) {
 
     return hours > 0
         ? `${hours}:${pad(minutes)}:${pad(seconds)}`
-        : `${minutes}:${pad(seconds)}`;
+        : `${pad(minutes)}:${pad(seconds)}`;
 }
 
 const CardStack = GObject.registerClass(
@@ -3114,7 +3137,7 @@ class MediaModel {
     _readOptions() {
         const size = readSetting(this._settings, 'cover-size');
         return {
-            coverSize: COVER_SIZES[size] ?? COVER_SIZE,
+            coverSize: COVER_SIZES[size] ?? COVER_SIZES.medium,
             showProgress: readSetting(this._settings, 'show-progress'),
             showVolume: readSetting(this._settings, 'show-volume'),
             showLoopShuffle: readSetting(this._settings, 'show-loop-shuffle'),
@@ -3193,11 +3216,11 @@ class NowPlayingButton extends PanelMenu.Button {
         });
         box.add_child(this._controls);
 
-        this._prevButton = this._addPanelControl('media-skip-backward-symbolic',
+        this._prevButton = this._addPanelControl('media-seek-backward-symbolic',
             () => this._model.previous(), -PRESS_NUDGE);
         this._playButton = this._addPanelControl('media-playback-start-symbolic',
             () => this._model.playPause());
-        this._nextButton = this._addPanelControl('media-skip-forward-symbolic',
+        this._nextButton = this._addPanelControl('media-seek-forward-symbolic',
             () => this._model.next(), PRESS_NUDGE);
 
         if (HAS_CLICK_GESTURE) {
