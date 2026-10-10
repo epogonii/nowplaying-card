@@ -94,6 +94,8 @@ Preferences:
   carrying the player's own name on both lines
 - Transport, track text, wheel and middle click in the panel itself, so a track
   can be changed without opening anything
+- The icon of the app that is playing in the panel, next to the equalizer or in
+  its place
 - Click the cover to switch to the player's own window
 - Several players share one popup as an accordion; a row opened by hand stays
   open while its player is playing
@@ -203,6 +205,7 @@ system, the spectrum stands still and does not listen.
 | Text width | Longest the panel text may get, in pixels |
 | Fixed text width | Keep that width even for a short track |
 | Icon in the panel | The equalizer next to the text, or the text alone |
+| Player icon | The icon of the app that is playing, next to the equalizer, or in its place with Icon in the panel off |
 | Scrolling over the button | Nothing, switch tracks, or change volume |
 | Controls in the panel | Previous, play and next next to the icon |
 | Middle click | Nothing, play or pause, or next track |

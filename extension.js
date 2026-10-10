@@ -93,6 +93,7 @@ const PLAY_ICON_SIZE = 22;
 const COMPACT_CONTROL_ICON_SIZE = 16;
 const COMPACT_PLAY_ICON_SIZE = 20;
 const PANEL_CONTROL_ICON_SIZE = 14;
+const PANEL_APP_ICON_SIZE = 16;
 
 // GNOME 50 opens a panel menu from a Clutter gesture instead of the event
 // vfunc. A gesture on the button wins over the buttons inside it, and there is
@@ -188,6 +189,7 @@ const DEFAULTS = {
     'panel-text-width': 180,
     'panel-text-fixed': false,
     'panel-icon': true,
+    'panel-app-icon': false,
     'ignored-players': [],
 };
 
@@ -3218,6 +3220,12 @@ class NowPlayingButton extends PanelMenu.Button {
             x_expand: true,
         });
         center.add_child(box);
+
+        this._appIcon = new St.Icon({
+            icon_size: PANEL_APP_ICON_SIZE,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        box.add_child(this._appIcon);
         box.add_child(this._model.equalizer);
         this.add_child(center);
 
@@ -3456,6 +3464,7 @@ class NowPlayingButton extends PanelMenu.Button {
 
     _syncVisibility() {
         this._syncLabel();
+        this._syncAppIcon();
         this._syncIcon();
         this._syncControls();
         this._syncContextMenu();
@@ -3507,13 +3516,22 @@ class NowPlayingButton extends PanelMenu.Button {
         this._panelLabel.visible = text !== '';
     }
 
-    // With no text the icon stays, or the button would be empty. Text chosen
-    // for the spectrum goes next to it, so the spectrum stays too.
+    _syncAppIcon() {
+        const app = this._model.activePlayer?.app;
+        this._appIcon.gicon = app?.get_icon() ?? null;
+        this._appIcon.visible = readSetting(this._settings, 'panel-app-icon') &&
+            !!this._appIcon.gicon;
+    }
+
+    // With no text and no player icon the equalizer stays, or the button would
+    // be empty. Text chosen for the spectrum goes next to it, so the spectrum
+    // stays too.
     _syncIcon() {
         const showIcon = readSetting(this._settings, 'panel-icon') ||
-            !this._panelLabel.visible || this._spectrumText() !== null;
+            (!this._panelLabel.visible && !this._appIcon.visible) ||
+            this._spectrumText() !== null;
         this._model.equalizer.visible = showIcon;
-        if (showIcon)
+        if (showIcon || this._appIcon.visible)
             this._panelLabel.remove_style_class_name('np-panel-text-alone');
         else
             this._panelLabel.add_style_class_name('np-panel-text-alone');
@@ -3656,6 +3674,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::panel-controls', () => this._host?._model.sync(),
             'changed::panel-text-fixed', () => this._host?._model.sync(),
             'changed::panel-icon', () => this._host?._model.sync(),
+            'changed::panel-app-icon', () => this._host?._model.sync(),
             'changed::ignored-players', () => this._host?._model.sync(),
             'changed::hide-builtin-media', () => this._syncBuiltinMedia(),
             this);

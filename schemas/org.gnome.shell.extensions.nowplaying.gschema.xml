@@ -202,6 +202,11 @@
       <summary>Show the icon in the panel</summary>
       <description>When off, only the track is shown. The icon still appears when there is no text.</description>
     </key>
+    <key name="panel-app-icon" type="b">
+      <default>false</default>
+      <summary>Show the player icon in the panel</summary>
+      <description>Put the icon of the app that is playing next to the equalizer. With the panel icon off it takes the equalizer's place.</description>
+    </key>
     <key name="ignored-players" type="as">
       <default>[]</default>
       <summary>Players to leave out</summary>

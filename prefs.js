@@ -145,6 +145,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         panel.add(iconRow);
 
+        const appIconRow = new Adw.SwitchRow({
+            title: _('Player icon'),
+            subtitle: _('The app that is playing, next to the equalizer or in its place'),
+        });
+        panel.add(appIconRow);
+
         const scrollRow = new Adw.ComboRow({
             title: _('Scrolling over the button'),
             model: new Gtk.StringList({
@@ -382,6 +388,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('panel-controls', controlsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-text-fixed', fixedWidthRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-icon', iconRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('panel-app-icon', appIconRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('hide-builtin-media', builtinRow, 'active', Gio.SettingsBindFlags.DEFAULT);
 
         this._bindIgnored(settings, players);
@@ -399,7 +406,8 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             const hasText = (ownText ? spectrumText : settings.get_string('panel-text')) !== 'none';
             textWidthRow.sensitive = hasText;
             fixedWidthRow.sensitive = hasText;
-            iconRow.sensitive = hasText && !ownText;
+            const appIcon = settings.get_boolean('panel-app-icon');
+            iconRow.sensitive = (hasText || appIcon) && !ownText;
             shapeRow.sensitive = showSpectrum;
             colorsRow.sensitive = showSpectrum;
             columnsRow.sensitive = showSpectrum;
@@ -408,6 +416,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         };
         settings.connect('changed::location', syncSensitivity);
         settings.connect('changed::panel-text', syncSensitivity);
+        settings.connect('changed::panel-app-icon', syncSensitivity);
         settings.connect('changed::show-spectrum', syncSensitivity);
         settings.connect('changed::spectrum-text', syncSensitivity);
         settings.connect('changed::animate-icon', syncSensitivity);
