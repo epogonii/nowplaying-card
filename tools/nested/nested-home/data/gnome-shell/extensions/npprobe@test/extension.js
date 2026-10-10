@@ -734,6 +734,20 @@ export default class ProbeQs extends Extension {
             stateObj()?._settings.set_boolean('show-spectrum', false);
             stateObj()?._settings.set_string('panel-text', 'none');
         });
+        // The player's own icon: alone in place of the equalizer, then beside it.
+        this._at(53.75, () => {
+            const btn = panelButton();
+            const settings = stateObj()?._settings;
+            settings?.set_boolean('panel-app-icon', true);
+            const want = btn?._model.activePlayer?.app?.get_icon()?.to_string();
+            log(`PROBE APPICON alone icon=${btn?._appIcon.visible}:${btn?._appIcon.gicon?.to_string()} ` +
+                `eq=${btn?._model.equalizer.visible} (expect true:${want}, false)`);
+            settings?.set_boolean('panel-icon', true);
+            log(`PROBE APPICON beside icon=${btn?._appIcon.visible} ` +
+                `eq=${btn?._model.equalizer.visible} (expect true, true)`);
+            settings?.set_boolean('panel-app-icon', false);
+            log(`PROBE APPICON off icon=${btn?._appIcon.visible} (expect false)`);
+        });
         this._at(53.8, () => {
             stateObj()?._settings.set_boolean('panel-icon', true);
             stateObj()?._settings.set_string('panel-text', 'artist-title');
