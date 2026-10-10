@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.9
+
+- New switch on the Panel page, Player icon: the icon of the app that is
+  playing, next to the equalizer, or in its place with Icon in the panel
+  off (#3).
+
 ## 1.0.8
 
 - The equalizer and the scrolling titles disconnect from the animations
