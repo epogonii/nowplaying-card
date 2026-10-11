@@ -154,6 +154,11 @@
       <summary>Cover size</summary>
       <description>How large the album art is drawn in a full-size card.</description>
     </key>
+    <key name="show-artwork" type="b">
+      <default>true</default>
+      <summary>Show the album art</summary>
+      <description>When off, the player's own icon stands where the picture would be and no art is fetched from the web.</description>
+    </key>
     <key name="show-progress" type="b">
       <default>true</default>
       <summary>Show the progress bar</summary>

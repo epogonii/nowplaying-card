@@ -108,6 +108,8 @@ Preferences:
   preferences
 - Equalizer bars with rounded ends, square ends, or rounded ends in colours
   that keep moving
+- The album art can be turned off: the card shows the player's icon instead
+  and fetches nothing from the web
 - Or a spectrum analyzer that moves with the sound itself, like the meter on a
   hi-fi: segments, solid columns or columns mirrored around the middle, eight
   to thirty-two of them, in the theme colour, with a red top, green to red or a
@@ -176,6 +178,7 @@ Four pages, in the order the window shows them.
 | Cards at once | How many players the popup shows, one to ten |
 | Playing player first | Keep the card that is playing at the top |
 | Cover size | Artwork in a full card; medium is as tall as the text beside it |
+| Album art | Off, the player's icon stands in for the picture and nothing is fetched from the web |
 | Show the progress bar | Position and length of the track |
 | Show the volume slider | For players that carry a volume of their own |
 | Show shuffle and repeat | For players that support them |

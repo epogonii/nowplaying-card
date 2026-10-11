@@ -177,6 +177,7 @@ const DEFAULTS = {
     'spectrum-text': 'panel',
     'max-cards': 3,
     'cover-size': 'medium',
+    'show-artwork': true,
     'show-progress': true,
     'show-volume': false,
     'show-loop-shuffle': false,
@@ -1280,6 +1281,7 @@ GObject.registerClass(CoverClip);
 // built during startup is never left without an answer.
 const CARD_OPTIONS = {
     coverSize: COVER_SIZES[DEFAULTS['cover-size']],
+    showArtwork: DEFAULTS['show-artwork'],
     showProgress: DEFAULTS['show-progress'],
     showVolume: DEFAULTS['show-volume'],
     showLoopShuffle: DEFAULTS['show-loop-shuffle'],
@@ -1296,7 +1298,7 @@ const CARD_OPTIONS = {
 const MediaCard = GObject.registerClass({
     Signals: {'expand-request': {}},
 }, class MediaCard extends St.BoxLayout {
-    _init(player, closeMenu) {
+    _init(player, closeMenu, options) {
         super._init({
             style_class: 'np-card',
             ...VERTICAL,
@@ -1332,7 +1334,7 @@ const MediaCard = GObject.registerClass({
 
         this._compact = false;
         this._compactApplied = false;
-        this._options = CARD_OPTIONS;
+        this._options = options;
 
         // Cover on the left, everything else stacked beside it. Expanded, that
         // column carries the text, the controls and the seek bar; folded, it
@@ -1580,8 +1582,12 @@ const MediaCard = GObject.registerClass({
     }
 
     setOptions(options) {
+        const artChanged = options.showArtwork !== this._options.showArtwork;
         this._options = options;
-        this._applyLayout();
+        if (artChanged)
+            this._sync();
+        else
+            this._applyLayout();
     }
 
     // Only a stack that holds several players has anything to expand.
@@ -1684,7 +1690,8 @@ const MediaCard = GObject.registerClass({
 
         // Players emit 'changed' for every position or volume tweak; only
         // touch the texture when the artwork or the fallback changed.
-        const coverUrl = this._player.trackCoverUrl;
+        const coverUrl = this._options.showArtwork
+            ? this._player.trackCoverUrl : null;
         const app = this._player.app;
         if (coverUrl !== this._coverUrl || app !== this._coverApp) {
             // A player recognised late changes only the icon, no new fetch.
@@ -2310,8 +2317,7 @@ class CardStack extends St.BoxLayout {
         if (this._cards.has(player))
             return;
 
-        const card = new MediaCard(player, this._closeMenu);
-        card.setOptions(this._options);
+        const card = new MediaCard(player, this._closeMenu, this._options);
         card.connect('expand-request', () => this._onExpandRequest(card));
         this._cards.set(player, card);
         this.add_child(card);
@@ -3137,9 +3143,11 @@ class MediaModel {
     }
 
     sync() {
+        // Options first: a new card asks for its artwork straight away.
+        const options = this._readOptions();
+        this.stack.setOptions(options);
         this._syncPlayers();
         this.stack.setLayout(readSetting(this._settings, 'card-layout'));
-        this.stack.setOptions(this._readOptions());
         const spectrum = readSetting(this._settings, 'show-spectrum');
         this.equalizer.animate = readSetting(this._settings, 'animate-icon');
         this.equalizer.iconStyle = spectrum
@@ -3159,6 +3167,7 @@ class MediaModel {
         const size = readSetting(this._settings, 'cover-size');
         return {
             coverSize: COVER_SIZES[size] ?? COVER_SIZES.medium,
+            showArtwork: readSetting(this._settings, 'show-artwork'),
             showProgress: readSetting(this._settings, 'show-progress'),
             showVolume: readSetting(this._settings, 'show-volume'),
             showLoopShuffle: readSetting(this._settings, 'show-loop-shuffle'),
@@ -3664,6 +3673,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::max-cards', () => this._host?._model.sync(),
             'changed::card-layout', () => this._host?._model.sync(),
             'changed::cover-size', () => this._host?._model.sync(),
+            'changed::show-artwork', () => this._host?._model.sync(),
             'changed::show-progress', () => this._host?._model.sync(),
             'changed::show-volume', () => this._host?._model.sync(),
             'changed::show-loop-shuffle', () => this._host?._model.sync(),

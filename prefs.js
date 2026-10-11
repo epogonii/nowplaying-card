@@ -216,6 +216,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         card.add(coverRow);
 
+        const artworkRow = new Adw.SwitchRow({
+            title: _('Album art'),
+            subtitle: _('Off, the player\'s icon stands in for the picture'),
+        });
+        card.add(artworkRow);
+
         const progressRow = new Adw.SwitchRow({
             title: _('Show the progress bar'),
             subtitle: _('Position and length of the track'),
@@ -376,6 +382,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('panel-index', indexRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('max-cards', maxCardsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-text-width', textWidthRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('show-artwork', artworkRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-progress', progressRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-volume', volumeRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-loop-shuffle', loopRow, 'active', Gio.SettingsBindFlags.DEFAULT);
