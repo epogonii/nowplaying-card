@@ -29,6 +29,12 @@
     <value value="1" nick="play-pause"/>
     <value value="2" nick="next"/>
   </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.panel-right-click">
+    <value value="0" nick="menu"/>
+    <value value="1" nick="play-pause"/>
+    <value value="2" nick="next"/>
+    <value value="3" nick="none"/>
+  </enum>
   <enum id="org.gnome.shell.extensions.nowplaying.equalizer-style">
     <value value="0" nick="bars"/>
     <value value="1" nick="rounded"/>
@@ -195,6 +201,11 @@
     <key name="panel-middle-click" enum="org.gnome.shell.extensions.nowplaying.panel-middle-click">
       <default>'play-pause'</default>
       <summary>Middle click on the panel button</summary>
+    </key>
+    <key name="panel-right-click" enum="org.gnome.shell.extensions.nowplaying.panel-right-click">
+      <default>'menu'</default>
+      <summary>Right click on the panel button</summary>
+      <description>The menu that picks when the button shows, play or pause, the next track, or nothing. The menu still opens from the keyboard.</description>
     </key>
     <key name="panel-text" enum="org.gnome.shell.extensions.nowplaying.panel-text">
       <default>'none'</default>

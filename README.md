@@ -105,7 +105,7 @@ Preferences:
 - Own panel button or embedded in Quick Settings, and the top-bar icon can be
   there always, only while a player runs, or never
 - Right-click the panel button to choose when it shows, or to open the
-  preferences
+  preferences; or make the right button play, pause or skip instead
 - Equalizer bars with rounded ends, square ends, or rounded ends in colours
   that keep moving, in the text colour or the system accent colour
 - The album art can be turned off: the card shows the player's icon instead
@@ -213,6 +213,7 @@ system, the spectrum stands still and does not listen.
 | Scrolling over the button | Nothing, switch tracks, or change volume |
 | Controls in the panel | Previous, play and next next to the icon |
 | Middle click | Nothing, play or pause, or next track |
+| Right click | The menu, play or pause, next track, or nothing; the menu still opens from the keyboard |
 
 ### Players
 

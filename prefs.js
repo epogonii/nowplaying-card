@@ -13,6 +13,7 @@ const PANEL_BOXES = ['left', 'center', 'right'];
 const PANEL_TEXTS = ['none', 'title', 'artist-title'];
 const PANEL_SCROLLS = ['none', 'track', 'volume'];
 const MIDDLE_CLICKS = ['none', 'play-pause', 'next'];
+const RIGHT_CLICKS = ['menu', 'play-pause', 'next', 'none'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
 const EQUALIZER_STYLES = ['bars', 'rounded', 'rainbow'];
@@ -172,6 +173,14 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             }),
         });
         panel.add(middleRow);
+
+        const rightRow = new Adw.ComboRow({
+            title: _('Right click'),
+            model: new Gtk.StringList({
+                strings: [_('Menu'), _('Play or pause'), _('Next track'), _('Nothing')],
+            }),
+        });
+        panel.add(rightRow);
 
         const card = new Adw.PreferencesGroup({title: _('Card')});
         cardPage.add(card);
@@ -378,6 +387,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         this._bindEnum(settings, 'panel-text', PANEL_TEXTS, textRow);
         this._bindEnum(settings, 'panel-scroll', PANEL_SCROLLS, scrollRow);
         this._bindEnum(settings, 'panel-middle-click', MIDDLE_CLICKS, middleRow);
+        this._bindEnum(settings, 'panel-right-click', RIGHT_CLICKS, rightRow);
         this._bindEnum(settings, 'card-layout', CARD_LAYOUTS, layoutRow);
         this._bindEnum(settings, 'cover-size', COVER_SIZES, coverRow);
         this._bindEnum(settings, 'indicator-visibility', VISIBILITIES, visibilityRow);

@@ -186,6 +186,7 @@ const DEFAULTS = {
     'scroll-text': true,
     'panel-scroll': 'track',
     'panel-middle-click': 'play-pause',
+    'panel-right-click': 'menu',
     'panel-controls': false,
     'panel-text': 'none',
     'panel-text-width': 180,
@@ -3284,7 +3285,7 @@ class NowPlayingButton extends PanelMenu.Button {
             this._addGesture(this, Clutter.BUTTON_MIDDLE,
                 () => this._middleClickAction());
             this._addGesture(this, Clutter.BUTTON_SECONDARY,
-                () => this._contextMenu.toggle());
+                () => this._rightClickAction());
         }
 
         this.menu.box.add_style_class_name('np-menu');
@@ -3420,7 +3421,7 @@ class NowPlayingButton extends PanelMenu.Button {
 
         if (type === Clutter.EventType.BUTTON_PRESS &&
             event.get_button() === Clutter.BUTTON_SECONDARY) {
-            this._contextMenu.toggle();
+            this._rightClickAction();
             return Clutter.EVENT_STOP;
         }
 
@@ -3475,7 +3476,19 @@ class NowPlayingButton extends PanelMenu.Button {
     }
 
     _middleClickAction() {
-        const action = readSetting(this._settings, 'panel-middle-click');
+        return this._clickAction(readSetting(this._settings, 'panel-middle-click'));
+    }
+
+    _rightClickAction() {
+        return this._clickAction(readSetting(this._settings, 'panel-right-click'));
+    }
+
+    _clickAction(action) {
+        if (action === 'menu') {
+            this._contextMenu.toggle();
+            return true;
+        }
+
         if (action === 'none' || !this._model.activePlayer)
             return false;
 
