@@ -598,13 +598,14 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         address.add_suffix(copy);
         group.add(address);
 
+        // A picture grows to the width it is given, so the clamp holds it to
+        // its size; centring it alone does not.
         const code = new Gtk.Picture({
-            halign: Gtk.Align.CENTER,
             margin_top: 12,
             width_request: QR_SIZE,
             height_request: QR_SIZE,
         });
-        group.add(code);
+        group.add(new Adw.Clamp({maximum_size: QR_SIZE, child: code}));
 
         const chosen = () => WALLETS[network.selected] ?? WALLETS[0];
 
