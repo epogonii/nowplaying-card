@@ -188,6 +188,7 @@ const DEFAULTS = {
     'panel-middle-click': 'play-pause',
     'panel-right-click': 'menu',
     'panel-controls': false,
+    'panel-controls-shown': 'all',
     'panel-text': 'none',
     'panel-text-width': 180,
     'panel-text-fixed': false,
@@ -3525,8 +3526,9 @@ class NowPlayingButton extends PanelMenu.Button {
         this._playButton.child.icon_name = player.status === 'Playing'
             ? 'media-playback-pause-symbolic'
             : 'media-playback-start-symbolic';
-        this._prevButton.visible = player.canGoPrevious;
-        this._nextButton.visible = player.canGoNext;
+        const all = readSetting(this._settings, 'panel-controls-shown') === 'all';
+        this._prevButton.visible = all && player.canGoPrevious;
+        this._nextButton.visible = all && player.canGoNext;
     }
 
     // The spectrum's own choice of text, or null when the Panel page decides.
@@ -3712,6 +3714,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::panel-text', () => this._host?._model.sync(),
             'changed::panel-text-width', () => this._host?._model.sync(),
             'changed::panel-controls', () => this._host?._model.sync(),
+            'changed::panel-controls-shown', () => this._host?._model.sync(),
             'changed::panel-text-fixed', () => this._host?._model.sync(),
             'changed::panel-icon', () => this._host?._model.sync(),
             'changed::panel-app-icon', () => this._host?._model.sync(),

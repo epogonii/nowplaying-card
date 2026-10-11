@@ -14,6 +14,7 @@ const PANEL_TEXTS = ['none', 'title', 'artist-title'];
 const PANEL_SCROLLS = ['none', 'track', 'volume'];
 const MIDDLE_CLICKS = ['none', 'play-pause', 'next'];
 const RIGHT_CLICKS = ['menu', 'play-pause', 'next', 'none'];
+const CONTROLS_SHOWN = ['all', 'play'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
 const EQUALIZER_STYLES = ['bars', 'rounded', 'rainbow'];
@@ -162,9 +163,17 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
 
         const controlsRow = new Adw.SwitchRow({
             title: _('Controls in the panel'),
-            subtitle: _('Previous, play and next next to the icon'),
+            subtitle: _('Transport buttons next to the icon'),
         });
         panel.add(controlsRow);
+
+        const controlsShownRow = new Adw.ComboRow({
+            title: _('Controls shown'),
+            model: new Gtk.StringList({
+                strings: [_('Previous, play and next'), _('Play and pause only')],
+            }),
+        });
+        panel.add(controlsShownRow);
 
         const middleRow = new Adw.ComboRow({
             title: _('Middle click'),
@@ -388,6 +397,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         this._bindEnum(settings, 'panel-scroll', PANEL_SCROLLS, scrollRow);
         this._bindEnum(settings, 'panel-middle-click', MIDDLE_CLICKS, middleRow);
         this._bindEnum(settings, 'panel-right-click', RIGHT_CLICKS, rightRow);
+        this._bindEnum(settings, 'panel-controls-shown', CONTROLS_SHOWN, controlsShownRow);
         this._bindEnum(settings, 'card-layout', CARD_LAYOUTS, layoutRow);
         this._bindEnum(settings, 'cover-size', COVER_SIZES, coverRow);
         this._bindEnum(settings, 'indicator-visibility', VISIBILITIES, visibilityRow);
@@ -432,6 +442,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             fixedWidthRow.sensitive = hasText;
             const appIcon = settings.get_boolean('panel-app-icon');
             iconRow.sensitive = (hasText || appIcon) && !ownText;
+            controlsShownRow.sensitive = settings.get_boolean('panel-controls');
             const colors = settings.get_string('spectrum-colors');
             const spectrumInk = showSpectrum && (colors === 'plain' || colors === 'classic');
             accentRow.sensitive = spectrumInk ||
@@ -445,6 +456,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.connect('changed::location', syncSensitivity);
         settings.connect('changed::panel-text', syncSensitivity);
         settings.connect('changed::panel-app-icon', syncSensitivity);
+        settings.connect('changed::panel-controls', syncSensitivity);
         settings.connect('changed::equalizer-style', syncSensitivity);
         settings.connect('changed::spectrum-colors', syncSensitivity);
         settings.connect('changed::show-spectrum', syncSensitivity);

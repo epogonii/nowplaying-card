@@ -35,6 +35,10 @@
     <value value="2" nick="next"/>
     <value value="3" nick="none"/>
   </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.panel-controls-shown">
+    <value value="0" nick="all"/>
+    <value value="1" nick="play"/>
+  </enum>
   <enum id="org.gnome.shell.extensions.nowplaying.equalizer-style">
     <value value="0" nick="bars"/>
     <value value="1" nick="rounded"/>
@@ -107,7 +111,12 @@
     <key name="panel-controls" type="b">
       <default>false</default>
       <summary>Show the controls in the panel</summary>
-      <description>Put previous, play and next next to the icon, so a track can be changed without opening the card.</description>
+      <description>Put the transport next to the icon, so a track can be changed without opening the card.</description>
+    </key>
+    <key name="panel-controls-shown" enum="org.gnome.shell.extensions.nowplaying.panel-controls-shown">
+      <default>'all'</default>
+      <summary>Which controls the panel shows</summary>
+      <description>Previous, play and next, or play and pause alone.</description>
     </key>
     <key name="max-cards" type="i">
       <default>3</default>

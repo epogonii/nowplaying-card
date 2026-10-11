@@ -211,7 +211,8 @@ system, the spectrum stands still and does not listen.
 | Icon in the panel | The equalizer next to the text, or the text alone |
 | Player icon | The icon of the app that is playing, next to the equalizer, or in its place with Icon in the panel off |
 | Scrolling over the button | Nothing, switch tracks, or change volume |
-| Controls in the panel | Previous, play and next next to the icon |
+| Controls in the panel | Transport buttons next to the icon |
+| Controls shown | Previous, play and next, or play and pause only |
 | Middle click | Nothing, play or pause, or next track |
 | Right click | The menu, play or pause, next track, or nothing; the menu still opens from the keyboard |
 
