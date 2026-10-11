@@ -107,7 +107,7 @@ Preferences:
 - Right-click the panel button to choose when it shows, or to open the
   preferences
 - Equalizer bars with rounded ends, square ends, or rounded ends in colours
-  that keep moving
+  that keep moving, in the text colour or the system accent colour
 - The album art can be turned off: the card shows the player's icon instead
   and fetches nothing from the web
 - Or a spectrum analyzer that moves with the sound itself, like the meter on a
@@ -184,6 +184,7 @@ Four pages, in the order the window shows them.
 | Show shuffle and repeat | For players that support them |
 | Scroll long text | Move a title sideways instead of cutting it off |
 | Icon style | Square ends, rounded ends, or cycling colours |
+| Accent colour | The bars in the system accent colour, GNOME 47 or later; cycling colours keep their own |
 | Animate the icon | Move the equalizer bars during playback |
 | Show the spectrum | Columns that follow the sound in place of the bars in the top bar |
 | Shape | Segments, solid columns, or columns mirrored around the middle |

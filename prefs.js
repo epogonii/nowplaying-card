@@ -265,6 +265,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         icon.add(iconStyleRow);
 
+        const accentRow = new Adw.SwitchRow({
+            title: _('Accent colour'),
+            subtitle: _('Bars in the system accent colour, GNOME 47 or later'),
+        });
+        icon.add(accentRow);
+
         const animateRow = new Adw.SwitchRow({
             title: _('Animate the icon'),
             subtitle: _('Move the equalizer bars during playback'),
@@ -388,6 +394,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('show-loop-shuffle', loopRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('scroll-text', scrollTextRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('sort-playing-first', sortRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('equalizer-accent', accentRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('animate-icon', animateRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-spectrum', spectrumRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-columns', columnsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
@@ -415,6 +422,10 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             fixedWidthRow.sensitive = hasText;
             const appIcon = settings.get_boolean('panel-app-icon');
             iconRow.sensitive = (hasText || appIcon) && !ownText;
+            const colors = settings.get_string('spectrum-colors');
+            const spectrumInk = showSpectrum && (colors === 'plain' || colors === 'classic');
+            accentRow.sensitive = spectrumInk ||
+                settings.get_string('equalizer-style') !== 'rainbow';
             shapeRow.sensitive = showSpectrum;
             colorsRow.sensitive = showSpectrum;
             columnsRow.sensitive = showSpectrum;
@@ -424,6 +435,8 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.connect('changed::location', syncSensitivity);
         settings.connect('changed::panel-text', syncSensitivity);
         settings.connect('changed::panel-app-icon', syncSensitivity);
+        settings.connect('changed::equalizer-style', syncSensitivity);
+        settings.connect('changed::spectrum-colors', syncSensitivity);
         settings.connect('changed::show-spectrum', syncSensitivity);
         settings.connect('changed::spectrum-text', syncSensitivity);
         settings.connect('changed::animate-icon', syncSensitivity);

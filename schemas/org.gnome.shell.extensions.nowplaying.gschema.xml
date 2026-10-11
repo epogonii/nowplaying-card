@@ -114,6 +114,11 @@
       <summary>Icon style</summary>
       <description>Shape and colour of the equalizer bars: square ends, rounded ends, or rounded ends that cycle through colours while a player is playing.</description>
     </key>
+    <key name="equalizer-accent" type="b">
+      <default>false</default>
+      <summary>Draw the bars in the accent colour</summary>
+      <description>The system accent colour instead of the text colour, on GNOME 47 and later. The cycling colours keep their own.</description>
+    </key>
     <key name="animate-icon" type="b">
       <default>true</default>
       <summary>Animate the equalizer icon</summary>

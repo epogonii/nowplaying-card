@@ -169,6 +169,7 @@ const DEFAULTS = {
     'card-layout': 'auto',
     'animate-icon': true,
     'equalizer-style': 'rounded',
+    'equalizer-accent': false,
     'show-spectrum': false,
     'spectrum-shape': 'segments',
     'spectrum-colors': 'classic',
@@ -391,6 +392,13 @@ class EqualizerIcon extends St.DrawingArea {
         return this._iconStyle;
     }
 
+    set accent(accent) {
+        if (accent)
+            this.add_style_class_name('np-equalizer-accent');
+        else
+            this.remove_style_class_name('np-equalizer-accent');
+    }
+
     // Held only while the icon moves on screen.
     set analyzer(analyzer) {
         if (this._analyzer === analyzer)
@@ -566,9 +574,13 @@ class EqualizerIcon extends St.DrawingArea {
         const [, height] = this.get_surface_size();
         const cr = this.get_context();
         const color = themeNode.get_foreground_color();
+        // The text beside the icon tells a light panel from a dark one; with
+        // the accent colour on, the icon's own colour does not.
+        const text = this.get_parent().get_theme_node().get_foreground_color();
+        const lightInk = (text.red + text.green + text.blue) / 3 > 127;
 
         if (this._iconStyle === 'spectrum') {
-            this._repaintSpectrum(cr, color, height);
+            this._repaintSpectrum(cr, color, lightInk, height);
             cr.$dispose();
             return;
         }
@@ -587,8 +599,7 @@ class EqualizerIcon extends St.DrawingArea {
         const maxHeight = Math.round(height * 0.85);
         // Full-strength colour disappears against a light panel, so the cycle
         // is taken down a notch where the theme draws in dark ink.
-        const light = (color.red + color.green + color.blue) / 3 > 127;
-        const value = light ? 1 : 0.8;
+        const value = lightInk ? 1 : 0.8;
 
         if (rounded) {
             cr.setLineWidth(barWidth);
@@ -632,7 +643,7 @@ class EqualizerIcon extends St.DrawingArea {
     }
 
     // Unlit segments are drawn faintly, so the grid shows while it is quiet.
-    _repaintSpectrum(cr, color, height) {
+    _repaintSpectrum(cr, color, lightInk, height) {
         // Two pixels a row at least, so a thin panel gets fewer rows.
         const rows = Math.min(ROWS, Math.floor(height / 2));
         if (rows < 1)
@@ -655,7 +666,6 @@ class EqualizerIcon extends St.DrawingArea {
         const alpha = color.alpha / 255;
         const t = (GLib.get_monotonic_time() - this._start) / 1000000;
         const ink = [color.red / 255, color.green / 255, color.blue / 255];
-        const lightInk = (color.red + color.green + color.blue) / 3 > 127;
         const [green, yellow, red] = LEVEL_COLORS[lightInk ? 0 : 1];
         const hue = moving ? t / HUE_PERIOD : HUE_STATIC;
 
@@ -1289,6 +1299,7 @@ const CARD_OPTIONS = {
     scrollText: DEFAULTS['scroll-text'],
     animate: DEFAULTS['animate-icon'],
     equalizerStyle: DEFAULTS['equalizer-style'],
+    equalizerAccent: DEFAULTS['equalizer-accent'],
     analyzer: null,
     maxCards: DEFAULTS['max-cards'],
 };
@@ -1635,6 +1646,7 @@ const MediaCard = GObject.registerClass({
         this._equalizer.visible = !compact;
         this._equalizer.animate = options.animate;
         this._equalizer.iconStyle = options.equalizerStyle;
+        this._equalizer.accent = options.equalizerAccent;
         this._equalizer.analyzer = options.analyzer;
         this._equalizer.playing = this.playing;
 
@@ -3152,6 +3164,7 @@ class MediaModel {
         this.equalizer.animate = readSetting(this._settings, 'animate-icon');
         this.equalizer.iconStyle = spectrum
             ? 'spectrum' : readSetting(this._settings, 'equalizer-style');
+        this.equalizer.accent = options.equalizerAccent;
         this.equalizer.setSpectrum({
             shape: readSetting(this._settings, 'spectrum-shape'),
             colors: readSetting(this._settings, 'spectrum-colors'),
@@ -3175,6 +3188,9 @@ class MediaModel {
             scrollText: readSetting(this._settings, 'scroll-text'),
             animate: readSetting(this._settings, 'animate-icon'),
             equalizerStyle: readSetting(this._settings, 'equalizer-style'),
+            // -st-accent-color exists from GNOME 47 on.
+            equalizerAccent: SHELL_MAJOR >= 47 &&
+                readSetting(this._settings, 'equalizer-accent'),
             analyzer: readSetting(this._settings, 'show-spectrum')
                 ? this._analyzer : null,
             maxCards: readSetting(this._settings, 'max-cards'),
@@ -3664,6 +3680,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::indicator-visibility', () => this._host?._syncVisibility(),
             'changed::animate-icon', () => this._host?._model.sync(),
             'changed::equalizer-style', () => this._host?._model.sync(),
+            'changed::equalizer-accent', () => this._host?._model.sync(),
             'changed::show-spectrum', () => this._host?._model.sync(),
             'changed::spectrum-shape', () => this._host?._model.sync(),
             'changed::spectrum-colors', () => this._host?._model.sync(),
