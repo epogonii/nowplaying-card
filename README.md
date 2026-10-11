@@ -225,8 +225,9 @@ system, the spectrum stands still and does not listen.
 
 ### About
 
-No settings. Buttons to report a problem or request a feature, the links from
-[Support](#support), and the installed version.
+No settings of its own. Buttons to report a problem or request a feature, the
+links from [Support](#support), a reset that puts the other three pages back to
+their defaults after asking, and the installed version.
 
 ---
 

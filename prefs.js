@@ -46,7 +46,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
 
-        // Kept for the toast the copy button raises.
+        // Kept for the toasts, and for the reset dialog to open over.
         this._window = window;
 
         // Four pages rather than one long scroll: what the card looks like,
@@ -389,7 +389,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         addPlayer.connect('clicked', () => this._pickPlayer(window, settings));
         players.set_header_suffix(addPlayer);
 
-        this._fillAboutPage(aboutPage);
+        this._fillAboutPage(aboutPage, settings);
 
         this._bindEnum(settings, 'location', LOCATIONS, locationRow);
         this._bindEnum(settings, 'panel-box', PANEL_BOXES, boxRow);
@@ -465,9 +465,9 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         syncSensitivity();
     }
 
-    // Where the extension came from, and a place to say thanks from. Nothing
-    // on this page has anything to do with the extension working.
-    _fillAboutPage(page) {
+    // Where the extension came from, and a place to say thanks from. The reset
+    // at the bottom is the only thing on this page that touches a setting.
+    _fillAboutPage(page, settings) {
         const about = new Adw.PreferencesGroup({
             title: this.metadata.name,
             description: _('Whatever is playing, from the top bar'),
@@ -499,6 +499,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         }));
 
         this._addSupportGroup(page);
+        this._addResetGroup(page, settings);
 
         const footer = new Adw.PreferencesGroup();
         page.add(footer);
@@ -599,6 +600,51 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             this._copy(wallet);
             this._toast(_('%s address copied').replace('%s', () => name));
         });
+    }
+
+    _addResetGroup(page, settings) {
+        const group = new Adw.PreferencesGroup();
+        page.add(group);
+
+        const row = new Adw.ActionRow({
+            title: _('Reset all settings'),
+            subtitle: _('Card, Panel and Players back to their defaults'),
+        });
+        const button = new Gtk.Button({
+            label: _('Reset…'),
+            valign: Gtk.Align.CENTER,
+        });
+        button.connect('clicked', () => this._confirmReset(settings));
+        row.add_suffix(button);
+        group.add(row);
+    }
+
+    _confirmReset(settings) {
+        const options = {
+            heading: _('Reset all settings?'),
+            body: _('Every option goes back to its default, and ignored players get their cards again.'),
+            close_response: 'cancel',
+        };
+        // AlertDialog came with libadwaita 1.5; GNOME 45 only has MessageDialog.
+        const dialog = Adw.AlertDialog
+            ? new Adw.AlertDialog(options)
+            : new Adw.MessageDialog({...options, transient_for: this._window, modal: true});
+        dialog.add_response('cancel', _('Cancel'));
+        dialog.add_response('reset', _('Reset'));
+        dialog.set_response_appearance('reset', Adw.ResponseAppearance.DESTRUCTIVE);
+        dialog.connect('response', (_dialog, response) => {
+            if (response !== 'reset')
+                return;
+
+            for (const key of settings.settings_schema.list_keys())
+                settings.reset(key);
+            this._toast(_('All settings are back to their defaults'));
+        });
+
+        if (Adw.AlertDialog)
+            dialog.present(this._window);
+        else
+            dialog.present();
     }
 
     _toast(message) {
