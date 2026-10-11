@@ -3413,8 +3413,7 @@ class NowPlayingButton extends PanelMenu.Button {
         if (HAS_CLICK_GESTURE)
             return Clutter.EVENT_PROPAGATE;
 
-        const middle = (type === Clutter.EventType.BUTTON_PRESS ||
-            type === Clutter.EventType.BUTTON_RELEASE) &&
+        const middle = type === Clutter.EventType.BUTTON_PRESS &&
             event.get_button() === Clutter.BUTTON_MIDDLE;
 
         if (middle && this._middleClickAction())
