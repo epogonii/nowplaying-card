@@ -447,6 +447,21 @@ export default class ProbeQs extends Extension {
 
         // Where the badge lands: the app icon has to ride the bottom right
         // corner of the artwork, the way the card is meant to look.
+        // Album art off: every card falls back to the player's icon and drops
+        // any fetch; on again, the pictures come back.
+        const artState = () => cards().map(c =>
+            `${c._player.busName.replace('org.mpris.MediaPlayer2.', '')}=` +
+            `${c._hasArtwork}:${c._coverTile.has_style_class_name('np-cover-empty')}` +
+            `:${c._badge.visible}:${c._artCancellable !== null}`).join(' ');
+        this._at(80.5, () => {
+            const before = artState();
+            stateObj()?._settings.set_boolean('show-artwork', false);
+            log(`PROBE ARTOFF off ${artState()} ` +
+                `(expect false:true:false:false everywhere; before ${before})`);
+        });
+        this._at(81.2, () => stateObj()?._settings.set_boolean('show-artwork', true));
+        this._at(81.8, () => log(`PROBE ARTOFF on ${artState()} (expect as before)`));
+
         this._at(82, () => {
             const menu = Main.panel.statusArea.quickSettings.menu;
             if (!menu.isOpen)
@@ -748,13 +763,78 @@ export default class ProbeQs extends Extension {
             settings?.set_boolean('panel-app-icon', false);
             log(`PROBE APPICON off icon=${btn?._appIcon.visible} (expect false)`);
         });
+        // Play and pause alone in the panel, then all three again.
+        this._at(53.76, () => {
+            const btn = panelButton();
+            const settings = stateObj()?._settings;
+            settings?.set_boolean('panel-controls', true);
+            settings?.set_string('panel-controls-shown', 'play');
+            log(`PROBE CONTROLSET play prev=${btn?._prevButton.visible} ` +
+                `play=${btn?._playButton.visible} next=${btn?._nextButton.visible} ` +
+                '(expect false, true, false)');
+            settings?.set_string('panel-controls-shown', 'all');
+            const player = btn?._model.activePlayer;
+            log(`PROBE CONTROLSET all prev=${btn?._prevButton.visible} ` +
+                `next=${btn?._nextButton.visible} ` +
+                `(expect ${player?.canGoPrevious}, ${player?.canGoNext})`);
+            settings?.set_boolean('panel-controls', false);
+        });
+        // The accent colour on the bars in the panel and on the card.
+        this._at(53.78, () => {
+            const btn = panelButton();
+            const settings = stateObj()?._settings;
+            const eq = btn?._model.equalizer;
+            const ink = actor => actor?.get_theme_node().get_foreground_color().to_string();
+            const before = ink(eq);
+            settings?.set_boolean('equalizer-accent', true);
+            const accent = St.ThemeContext.get_for_stage(global.stage).get_accent_color();
+            log(`PROBE ACCENT on class=${eq?.has_style_class_name('np-equalizer-accent')} ` +
+                `ink=${ink(eq)} card=${ink(hostCards()[0]?._equalizer)} ` +
+                `accent=${[accent].flat().map(c => c?.to_string?.() ?? c).join('/')} ` +
+                '(expect true, the accent colour twice)');
+            settings?.set_boolean('equalizer-accent', false);
+            log(`PROBE ACCENT off class=${eq?.has_style_class_name('np-equalizer-accent')} ` +
+                `ink=${ink(eq)} (expect false, ${before})`);
+        });
         this._at(53.8, () => {
             stateObj()?._settings.set_boolean('panel-icon', true);
             stateObj()?._settings.set_string('panel-text', 'artist-title');
         });
         this._at(53.9, () => edges('back (expect eq=true, timeline=true, pad=0/2)'));
 
-        this._at(54, () => {
+        // Right click: play or pause through the seat, then the menu again.
+        this._at(53.95, () => {
+            const btn = panelButton();
+            const player = btn?._model.activePlayer;
+            stateObj()?._settings.set_string('panel-right-click', 'play-pause');
+            this._rightHits = 0;
+            if (player) {
+                const orig = player.playPause;
+                player.playPause = () => {
+                    this._rightHits++;
+                    orig.call(player);
+                };
+            }
+            clickAt(btn, Clutter.BUTTON_SECONDARY);
+        });
+        this._at(54.25, () => {
+            const btn = panelButton();
+            const player = btn?._model.activePlayer;
+            log(`PROBE RIGHTCLICK play hits=${this._rightHits} ` +
+                `menu=${btn?._contextMenu.isOpen} popup=${btn?.menu.isOpen} ` +
+                '(expect 1, false, false)');
+            if (player)
+                delete player.playPause;
+            stateObj()?._settings.set_string('panel-right-click', 'menu');
+            clickAt(btn, Clutter.BUTTON_SECONDARY);
+        });
+        this._at(54.5, () => {
+            const btn = panelButton();
+            log(`PROBE RIGHTCLICK menu open=${btn?._contextMenu.isOpen} (expect true)`);
+            btn?._contextMenu.close();
+        });
+
+        this._at(54.6, () => {
             stateObj()?._settings.set_string('location', 'quick-settings');
             stateObj()?._settings.set_string('panel-text', 'none');
             stateObj()?._settings.set_boolean('panel-controls', false);
