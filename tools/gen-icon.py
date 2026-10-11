@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Draws the README artwork: the icon and the animated version of it.
+"""Draws the icon: the README artwork, the animated version of it, and the logo
+on the About page of the preferences.
 
 The bars are the ones the extension draws, with the same shape and the same
 wave underneath. The speeds are rounded to whole turns of the loop so the
@@ -14,6 +15,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
+ICONS = ROOT / "icons"
 
 # Drawn large and scaled down, so every rounded end and every corner is smooth.
 RENDER = 512
@@ -53,10 +55,7 @@ def rounded_rect(cr, x, y, width, height, radius):
     cr.close_path()
 
 
-def draw(size, waves):
-    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
-    cr = cairo.Context(surface)
-
+def paint(cr, size, waves):
     tile = cairo.LinearGradient(0, 0, 0, size)
     tile.add_color_stop_rgb(0, *TOP)
     tile.add_color_stop_rgb(1, *BOTTOM)
@@ -81,6 +80,10 @@ def draw(size, waves):
         cr.line_to(x, middle + height / 2 - bar / 2)
         cr.stroke()
 
+
+def draw(size, waves):
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    paint(cairo.Context(surface), size, waves)
     return surface
 
 
@@ -95,6 +98,13 @@ def main():
     DOCS.mkdir(exist_ok=True)
 
     to_image(draw(RENDER, POSE), ICON).save(DOCS / "icon.png")
+
+    # The preferences scale the logo to the screen, so it goes out as a vector,
+    # sized in pixels rather than in cairo's default points.
+    logo = cairo.SVGSurface(str(ICONS / "logo.svg"), ICON, ICON)
+    logo.set_document_unit(cairo.SVGUnit.PX)
+    paint(cairo.Context(logo), ICON, POSE)
+    logo.finish()
 
     frames = []
     count = round(LOOP_S * FPS)
@@ -129,7 +139,7 @@ def main():
         optimize=True,
     )
 
-    print(f"wrote {DOCS / 'icon.png'} and {DOCS / 'equalizer.gif'}")
+    print(f"wrote {DOCS / 'icon.png'}, {DOCS / 'equalizer.gif'} and {ICONS / 'logo.svg'}")
 
 
 if __name__ == "__main__":

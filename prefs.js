@@ -39,6 +39,10 @@ const WALLETS = [
 const QR_DIR = 'icons/qr';
 const QR_SIZE = 168;
 
+// The icon from tools/gen-icon.py, at the top of the About page.
+const LOGO_FILE = 'icons/logo.svg';
+const LOGO_SIZE = 96;
+
 const VISIBILITIES = ['always', 'active', 'never'];
 const IGNORED_KEY = 'ignored-players';
 
@@ -468,10 +472,30 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
     // Where the extension came from, and a place to say thanks from. The reset
     // at the bottom is the only thing on this page that touches a setting.
     _fillAboutPage(page, settings) {
-        const about = new Adw.PreferencesGroup({
-            title: this.metadata.name,
-            description: _('Whatever is playing, from the top bar'),
-        });
+        // The icon, the name and the line under it, centred the way the About
+        // window of a GNOME app has them.
+        const header = new Adw.PreferencesGroup();
+        page.add(header);
+        header.add(new Gtk.Image({
+            file: `${this.path}/${LOGO_FILE}`,
+            pixel_size: LOGO_SIZE,
+        }));
+        header.add(new Gtk.Label({
+            label: this.metadata.name,
+            wrap: true,
+            justify: Gtk.Justification.CENTER,
+            margin_top: 12,
+            css_classes: ['title-1'],
+        }));
+        header.add(new Gtk.Label({
+            label: _('Whatever is playing, from the top bar'),
+            wrap: true,
+            justify: Gtk.Justification.CENTER,
+            margin_top: 6,
+            css_classes: ['dim-label'],
+        }));
+
+        const about = new Adw.PreferencesGroup();
         page.add(about);
         about.add(this._linkRow(_('Project page'), PROJECT_URL, PROJECT_URL));
 
