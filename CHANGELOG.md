@@ -5,6 +5,18 @@
 - New switch on the Panel page, Player icon: the icon of the app that is
   playing, next to the equalizer, or in its place with Icon in the panel
   off (#3).
+- Album art can be turned off on the Card page. The player's icon stands in
+  for the picture, and nothing is fetched from the web.
+- The equalizer bars can take the system accent colour, on GNOME 47 and
+  later.
+- Right click on the panel button can play or pause, or skip, instead of
+  opening the menu. The menu still opens from the keyboard.
+- The controls in the panel can be play and pause alone.
+- The About page can put every setting back to its default, after asking.
+- The About page starts with the icon and the name, centred, and its QR code
+  keeps its size instead of filling the width of the page.
+- A middle click on the panel button no longer acts twice on GNOME 45 to
+  48, where play or pause undid itself and next skipped two tracks.
 
 ## 1.0.8
 
