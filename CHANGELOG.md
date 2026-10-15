@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.10
+
+- A wide picture, such as a video thumbnail, fills the square of the cover
+  and is cut at the sides instead of being squeezed into it (#5).
+- The equalizer on the card sits halfway between the title and the artist
+  instead of at the top (#5).
+
 ## 1.0.9
 
 - New switch on the Panel page, Player icon: the icon of the app that is
