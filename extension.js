@@ -1447,7 +1447,6 @@ const MediaCard = GObject.registerClass({
         this._equalizer = new EqualizerIcon();
         this._equalizer.add_style_class_name('np-card-equalizer');
         this._equalizer.x_align = Clutter.ActorAlign.END;
-        this._equalizer.y_align = Clutter.ActorAlign.START;
         this._headerRow.add_child(this._equalizer);
 
         this._seekBox = new St.BoxLayout({
