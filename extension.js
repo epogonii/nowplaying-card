@@ -141,8 +141,7 @@ const REMOTE_ART_TRIES = 3;
 // artwork with it. All of it turns a logo into a poster.
 const FALLBACK_ICON_RATIO = 0.6;
 // Clutter.Container's actor-added on GNOME 45.
-const CHILD_ADDED = GObject.signal_lookup('child-added', Clutter.Actor.$gtype)
-    ? 'child-added' : 'actor-added';
+const CHILD_ADDED = SHELL_MAJOR >= 46 ? 'child-added' : 'actor-added';
 
 // What LoopStatus cycles through when the repeat button is clicked.
 const LOOP_ORDER = ['None', 'Playlist', 'Track'];
