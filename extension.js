@@ -140,6 +140,9 @@ const REMOTE_ART_TRIES = 3;
 // How much of the cover the player's own icon fills when a track brings no
 // artwork with it. All of it turns a logo into a poster.
 const FALLBACK_ICON_RATIO = 0.6;
+// Clutter.Container's actor-added on GNOME 45.
+const CHILD_ADDED = GObject.signal_lookup('child-added', Clutter.Actor.$gtype)
+    ? 'child-added' : 'actor-added';
 
 // What LoopStatus cycles through when the repeat button is clicked.
 const LOOP_ORDER = ['None', 'Playlist', 'Track'];
@@ -1359,6 +1362,11 @@ const MediaCard = GObject.registerClass({
             style_class: 'np-cover-art',
             icon_size: COVER_SIZE,
         });
+        // St gives every picture a square content size, which squeezes a wide
+        // one; filling the box _syncCover() sizes keeps its shape.
+        this._cover.connectObject(CHILD_ADDED, (_icon, texture) => {
+            texture.content_gravity = Clutter.ContentGravity.RESIZE_FILL;
+        }, this);
 
         // Which player a row belongs to is not obvious from album art alone,
         // so the app icon sits in the bottom right corner of the cover.
