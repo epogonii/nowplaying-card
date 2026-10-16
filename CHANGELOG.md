@@ -3,6 +3,9 @@
 ## Unreleased
 
 - A new icon: grey hills in fog in place of the violet tile.
+- The spectrum has a new shape, Waves: the hills of the icon, in its greys,
+  drifting by and rising with the sound. With Peak markers on, the peaks lift
+  the far hill.
 - On the About page the hills drift and rise slowly to a beat. They stand
   still when the desktop has animations off.
 
