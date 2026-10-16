@@ -3087,12 +3087,13 @@ class MediaModel {
 
         // A shell on its way out takes the actors down without calling
         // destroy() below, and players keep leaving the bus after that.
-        this.stack.connect('destroy', () => this._stopListening());
+        this.stack.connectObject('destroy', () => this._stopListening(), this);
     }
 
     _stopListening() {
         this._source?.disconnectObject(this);
         this._players.forEach(player => player.disconnectObject(this));
+        this.stack?.disconnectObject(this);
     }
 
     _addPlayer(player) {
