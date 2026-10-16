@@ -8,6 +8,15 @@
   the far hill.
 - On the About page the hills drift and rise slowly to a beat. They stand
   still when the desktop has animations off.
+- New switch on the Card page, Follow all sound: the spectrum moves with any
+  sound, calls and games included, even when nothing is playing, and falls flat
+  on a pause instead of standing still (#6). It listens whenever the icon is on
+  screen, so the sound card does not sleep, and before GNOME 50.2 the
+  microphone indicator stays on.
+- The moving icon costs the shell less: it steps on a timer of its own instead
+  of the frame clock, which ran the shell through every frame of the screen. A
+  new setting on the Card page, Frames a second, sets how often it moves, from
+  10 to 60, 30 by default; fewer cost less.
 
 ## 1.0.10
 
