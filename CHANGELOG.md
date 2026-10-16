@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- A new icon: grey hills in fog in place of the violet tile.
+- On the About page the hills drift and rise slowly to a beat. They stand
+  still when the desktop has animations off.
+
 ## 1.0.10
 
 - A wide picture, such as a video thumbnail, fills the square of the cover
