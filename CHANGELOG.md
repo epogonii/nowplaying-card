@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.11
 
 - A new icon: grey hills in fog in place of the violet tile.
 - The spectrum has a new shape, Waves: the hills of the icon, in its greys,
