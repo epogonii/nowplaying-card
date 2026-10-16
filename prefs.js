@@ -333,6 +333,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         spectrum.add(spectrumRow);
 
+        const allSoundRow = new Adw.SwitchRow({
+            title: _('Follow all sound'),
+            subtitle: _('Calls and games too, even with nothing playing'),
+        });
+        spectrum.add(allSoundRow);
+
         const shapeRow = new Adw.ComboRow({
             title: _('Shape'),
             model: new Gtk.StringList({
@@ -445,6 +451,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('show-spectrum', spectrumRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-columns', columnsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-peaks', peaksRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('spectrum-all-sound', allSoundRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-controls', controlsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-text-fixed', fixedWidthRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-icon', iconRow, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -480,6 +487,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             colorsRow.sensitive = showSpectrum && !waves;
             columnsRow.sensitive = showSpectrum;
             peaksRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');
+            allSoundRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');
             spectrumTextRow.sensitive = showSpectrum && isPanel;
         };
         settings.connect('changed::location', syncSensitivity);

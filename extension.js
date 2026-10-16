@@ -177,6 +177,7 @@ const DEFAULTS = {
     'spectrum-colors': 'classic',
     'spectrum-columns': 16,
     'spectrum-peaks': true,
+    'spectrum-all-sound': false,
     'spectrum-text': 'panel',
     'max-cards': 3,
     'cover-size': 'medium',
@@ -327,7 +328,7 @@ const LEVEL_COLORS = [
 ];
 
 // Equalizer bars, drawn with the panel's own foreground color so it follows
-// the theme. Animates only while something is playing.
+// the theme. Animates while something is playing, or with all sound on.
 const EqualizerIcon = GObject.registerClass(
 class EqualizerIcon extends St.DrawingArea {
     _init() {
@@ -338,6 +339,7 @@ class EqualizerIcon extends St.DrawingArea {
 
         this._playing = false;
         this._animate = true;
+        this._allSound = false;
         this._iconStyle = DEFAULTS['equalizer-style'];
         this._shape = DEFAULTS['spectrum-shape'];
         this._colors = DEFAULTS['spectrum-colors'];
@@ -347,6 +349,7 @@ class EqualizerIcon extends St.DrawingArea {
         this._holding = false;
         this._timeline = null;
         this._frameId = 0;
+        this._sleeping = 0;
         this._start = GLib.get_monotonic_time();
         this._painted = 0;
         this._drift = 0;
@@ -395,6 +398,15 @@ class EqualizerIcon extends St.DrawingArea {
 
     get animate() {
         return this._animate;
+    }
+
+    set allSound(allSound) {
+        if (this._allSound === allSound)
+            return;
+
+        this._allSound = allSound;
+        this._updateTimer();
+        this.queue_repaint();
     }
 
     // The spectrum is wider than the bars, so a new style can change the size.
@@ -465,7 +477,8 @@ class EqualizerIcon extends St.DrawingArea {
     }
 
     get _moving() {
-        return this._playing && this._animate &&
+        const hearing = this._allSound && this._analyzer?.deaf === false;
+        return (this._playing || hearing) && this._animate &&
             St.Settings.get().enable_animations;
     }
 
@@ -480,6 +493,9 @@ class EqualizerIcon extends St.DrawingArea {
             else
                 this._analyzer.release(this);
         }
+
+        if (wanted && this._playing)
+            this.wake();
 
         if (wanted && this._timeline === null) {
             // A timer of our own fires whenever it likes, and a frame that
@@ -513,8 +529,32 @@ class EqualizerIcon extends St.DrawingArea {
             return;
 
         this._painted = now;
-        this._step(now);
+        // The helper may have given up since the last frame.
+        if (this._moving)
+            this._step(now);
+        else
+            this._updateTimer();
         this.queue_repaint();
+
+        // Flat with nothing playing: stop the clock until a sound comes.
+        if (this._timeline !== null && !this._playing &&
+            this._levels.every(level => level === 0) &&
+            this._peaks.every(peak => peak === 0)) {
+            this._sleeping = now;
+            this._timeline.pause();
+        }
+    }
+
+    wake() {
+        if (!this._sleeping || this._timeline === null)
+            return;
+
+        const now = GLib.get_monotonic_time();
+        // Cycling colours carry on from where they stopped.
+        this._start += now - this._sleeping;
+        this._lastStep = now;
+        this._sleeping = 0;
+        this._timeline.start();
     }
 
     get _count() {
@@ -547,6 +587,8 @@ class EqualizerIcon extends St.DrawingArea {
         this._peaks = new Array(count).fill(0);
         this._peakTimes = new Array(count).fill(0);
         this._lastStep = GLib.get_monotonic_time();
+        // Asleep, the hill would stay up until the next sound.
+        this.wake();
     }
 
     // An analyzer that has heard nothing yet counts as silence, and one that
@@ -703,7 +745,9 @@ class EqualizerIcon extends St.DrawingArea {
         const showPeaks = moving && this._showPeaks;
         const count = this._levels.length;
         const alpha = color.alpha / 255;
-        const t = (GLib.get_monotonic_time() - this._start) / 1000000;
+        // Asleep, the colours stay where they stopped.
+        const now = this._sleeping || GLib.get_monotonic_time();
+        const t = (now - this._start) / 1000000;
         const ink = [color.red / 255, color.green / 255, color.blue / 255];
         const [green, yellow, red] = LEVEL_COLORS[lightInk ? 0 : 1];
         const hue = moving ? t / HUE_PERIOD : HUE_STATIC;
@@ -856,6 +900,7 @@ class EqualizerIcon extends St.DrawingArea {
             this._frameId = 0;
         }
         this._timeline = null;
+        this._sleeping = 0;
     }
 });
 
@@ -891,6 +936,12 @@ class SpectrumAnalyzer {
 
     get listening() {
         return this._proc !== null || this._backoffId !== 0;
+    }
+
+    // No way to listen, or gave up on a helper that kept dying.
+    get deaf() {
+        return this._missing ||
+            (this._failures >= SPECTRUM_TRIES && !this.listening);
     }
 
     hold(holder) {
@@ -983,6 +1034,8 @@ class SpectrumAnalyzer {
 
         this._bands = Float32Array.from(values, value => Number(value) / 1000);
         this._received = GLib.get_monotonic_time();
+        if (this._bands.some(band => band > 0))
+            this._holders.forEach(holder => holder.wake());
     }
 
     _onExit(proc, result) {
@@ -998,6 +1051,8 @@ class SpectrumAnalyzer {
         const status = proc.get_if_exited() ? proc.get_exit_status() : -1;
         const ran = GLib.get_monotonic_time() - this._started;
         this._stop();
+        // A sleeping icon would keep holding a dead helper.
+        this._holders.forEach(holder => holder.wake());
 
         if (status === SPECTRUM_NO_CAPTURE) {
             this._missing = true;
@@ -3271,6 +3326,7 @@ class MediaModel {
             peaks: readSetting(this._settings, 'spectrum-peaks'),
         });
         this.equalizer.analyzer = spectrum ? this._analyzer : null;
+        this.equalizer.allSound = readSetting(this._settings, 'spectrum-all-sound');
         this.equalizer.playing = this.stack.anyPlaying;
         this.notifyVisibility?.();
     }
@@ -3796,6 +3852,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::spectrum-colors', () => this._host?._model.sync(),
             'changed::spectrum-columns', () => this._host?._model.sync(),
             'changed::spectrum-peaks', () => this._host?._model.sync(),
+            'changed::spectrum-all-sound', () => this._host?._model.sync(),
             'changed::spectrum-text', () => this._host?._model.sync(),
             'changed::max-cards', () => this._host?._model.sync(),
             'changed::card-layout', () => this._host?._model.sync(),

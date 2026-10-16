@@ -165,6 +165,11 @@
       <summary>Show the peaks</summary>
       <description>Leave a mark at the top of each column for a moment after it falls.</description>
     </key>
+    <key name="spectrum-all-sound" type="b">
+      <default>false</default>
+      <summary>Follow all sound</summary>
+      <description>Move the spectrum with any sound, calls and games included, even while no player is playing. It then listens whenever the icon is on screen; with no player at all the icon is only there with Always Show in Top Bar, and before GNOME 50.2 the microphone indicator stays on.</description>
+    </key>
     <key name="spectrum-text" enum="org.gnome.shell.extensions.nowplaying.spectrum-text">
       <default>'panel'</default>
       <summary>Track next to the spectrum</summary>
