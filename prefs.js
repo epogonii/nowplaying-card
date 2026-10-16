@@ -554,7 +554,6 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         }));
     }
 
-    // A row that opens something in a browser.
     // Still when the desktop has animations off, and only ticking while the
     // page is on screen.
     _logo() {
@@ -582,6 +581,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         return logo;
     }
 
+    // A row that opens something in a browser.
     _linkRow(title, subtitle, url) {
         const row = new Adw.ActionRow({title, subtitle, activatable: true});
         row.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
