@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/equalizer.gif" width="128" height="128" alt="Now Playing Card">
+  <img src="docs/equalizer.webp" width="128" height="128" alt="Now Playing Card">
 </p>
 
 <h1 align="center">Now Playing Card</h1>

@@ -2,16 +2,19 @@
 """Draws the icon: the README artwork, the animated version of it, and the logo
 on the About page of the preferences.
 
-The bars are the ones the extension draws, with the same shape and the same
-wave underneath. The speeds are rounded to whole turns of the loop so the
-animation comes back to where it started and the GIF can repeat without a jump.
+Three layers of hills in fog, the sound drawn as a landscape. In motion each
+layer drifts at its own speed, and swells run slowly along the crests like
+peaks across the spectrum in the card, each layer to its own part of a made-up
+slow beat: the kick at the back, the snare in the middle, the tune in front.
+Speeds and beats come in whole turns of the loop so the animation repeats
+without a jump.
 """
 
 import math
 from pathlib import Path
 
 import cairo
-from PIL import Image
+from PIL import Image, ImageChops
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
@@ -20,30 +23,54 @@ ICONS = ROOT / "icons"
 # Drawn large and scaled down, so every rounded end and every corner is smooth.
 RENDER = 512
 ICON = 256
-FRAME = 128
+# Shown at 128 in the README, drawn at twice that for sharp screens.
+FRAME = 256
 
-N_BARS = 3
-BAR_WIDTH = 0.11
-BAR_GAP = 0.075
-MIN_HEIGHT = 0.16
-MAX_HEIGHT = 0.62
 CORNER = 0.22
 
-# Indigo into violet, top to bottom.
-TOP = (0.36, 0.36, 0.96)
-BOTTOM = (0.56, 0.20, 0.78)
+GRAPHITE = (0.14, 0.14, 0.15)
+# A hairline inside the edge, so the dark tile keeps its shape on a dark panel.
+RIM = 0.0078
+RIM_ALPHA = 0.20
 
-# The pose of the still icon: the middle bar tallest, the outer two uneven.
-POSE = (0.55, 1.0, 0.72)
+# Back to front: colour, opacity, where the hill sits, how tall it swells, how
+# many humps across the tile, and where along them it starts.
+HILLS = (
+    ((0.42, 0.42, 0.43), 0.55, 0.488, 0.117, 0.7, 0),
+    ((0.68, 0.68, 0.67), 0.75, 0.625, 0.090, 0.95, 1),
+    ((0.89, 0.88, 0.85), 0.95, 0.762, 0.066, 1.2, 2),
+)
+STEP = 0.008
 
-# One turn of the loop, and how many of those turns each bar makes in it. Whole
-# numbers are what keeps the last frame next to the first one.
-LOOP_S = 2.4
-TURNS = (3, 4, 2)
-PHASES = (0, 2.1, 4.2)
+# Fog settling into the dip in front of each far hill, so they sink back.
+HAZE = (0.68, 0.68, 0.67)
+HAZE_ALPHA = 0.16
+HAZE_DEPTH = 0.12
+
+# The animation lays the same grain over every frame, so it stays put and does
+# not flicker.
+GRAIN = 0.15
+
+# One turn of the loop, and how many of those turns each hill makes in it. The
+# near ones go faster, the way they would from a moving train.
+LOOP_S = 9
+TURNS = (1, 2, 3)
 FPS = 20
-# Colours in the shared palette; one index above them stands for the corners.
-COLOURS = 200
+
+# The beat: 40 a minute, a kick on every one, a snare on two and four, the
+# tune in between.
+BEATS = 6
+# A beat swells up over this much of itself and then dies away, smooth at both
+# ends: a hit that lands in one frame reads as a jolt.
+RISE = 0.3
+# How far a swell lifts its hill, back to front; how wide it is across the
+# tile; how many go along each crest and how many times a loop they cross it.
+REACT = (0.06, 0.06, 0.065)
+SWELL_WIDTH = 0.2
+SWELLS = 2
+CROSSINGS = (1, 1, 2)
+
+QUALITY = 88
 
 
 def rounded_rect(cr, x, y, width, height, radius):
@@ -55,36 +82,95 @@ def rounded_rect(cr, x, y, width, height, radius):
     cr.close_path()
 
 
-def paint(cr, size, waves):
-    tile = cairo.LinearGradient(0, 0, 0, size)
-    tile.add_color_stop_rgb(0, *TOP)
-    tile.add_color_stop_rgb(1, *BOTTOM)
+def lift(k, t, x):
+    """How high the swells on hill k stand over x, as a smooth curve."""
+    total = 0
+    for j in range(SWELLS):
+        centre = (j / SWELLS + k * 0.3 + CROSSINGS[k] * t) % 1
+        gap = abs(x - centre)
+        gap = min(gap, 1 - gap)
+        total += math.exp(-(gap / SWELL_WIDTH) ** 2)
+    return total
+
+
+def paint(cr, size, shifts, beat=None):
     rounded_rect(cr, 0, 0, size, size, size * CORNER)
-    cr.set_source(tile)
-    cr.fill()
+    cr.set_source_rgb(*GRAPHITE)
+    cr.fill_preserve()
+    cr.save()
+    cr.clip()
 
-    bar = size * BAR_WIDTH
-    gap = size * BAR_GAP
-    total = N_BARS * bar + (N_BARS - 1) * gap
-    left = (size - total) / 2
-    middle = size / 2
+    step = size * STEP
+    for k, ((colour, alpha, base, swell, humps, start), shift) in enumerate(zip(HILLS, shifts)):
+        crest = []
+        x = 0
+        while x <= size + step:
+            angle = x / size * math.pi * humps * 2 + start + shift
+            y = base - swell * math.sin(angle)
+            if beat:
+                t, louds = beat
+                y -= REACT[k] * louds[k] * lift(k, t, min(x / size, 1))
+            crest.append((x, size * y))
+            x += step
 
-    cr.set_source_rgb(1, 1, 1)
-    cr.set_line_width(bar)
-    cr.set_line_cap(cairo.LINE_CAP_ROUND)
+        cr.move_to(0, size)
+        for point in crest:
+            cr.line_to(*point)
+        cr.line_to(size, size)
+        cr.close_path()
+        cr.set_source_rgba(*colour, alpha)
+        cr.fill_preserve()
 
-    for i, wave in enumerate(waves):
-        height = size * (MIN_HEIGHT + (MAX_HEIGHT - MIN_HEIGHT) * wave)
-        x = left + i * (bar + gap) + bar / 2
-        cr.move_to(x, middle - height / 2 + bar / 2)
-        cr.line_to(x, middle + height / 2 - bar / 2)
-        cr.stroke()
+        if k < len(HILLS) - 1:
+            top = size * (base - swell)
+            fog = cairo.LinearGradient(0, top, 0, top + size * (2 * swell + HAZE_DEPTH))
+            fog.add_color_stop_rgba(0, *HAZE, 0)
+            fog.add_color_stop_rgba(1, *HAZE, HAZE_ALPHA)
+            cr.set_source(fog)
+            cr.fill()
+        else:
+            cr.new_path()
+    cr.restore()
+
+    inset = size * RIM / 2
+    rounded_rect(cr, inset, inset, size - 2 * inset, size - 2 * inset,
+                 size * CORNER - inset)
+    cr.set_line_width(size * RIM)
+    cr.set_source_rgba(1, 1, 1, RIM_ALPHA)
+    cr.stroke()
 
 
-def draw(size, waves):
+def swell(into):
+    """Eases up from nothing to its top at RISE into the beat, then dies away."""
+    x = into / RISE
+    return x * x * math.exp(2 * (1 - x))
+
+
+def music(count):
+    """How loud each hill plays in every frame of the loop."""
+    per_beat = count / BEATS
+    out = []
+    for n in range(count):
+        beat, into = divmod(n / per_beat, 1)
+        kick = swell(into)
+        snare = swell(into) if beat % 2 == 1 else 0
+        tune = math.exp(-((into - 0.5) * 4) ** 2)
+        out.append((0.15 + 0.85 * kick, 0.15 + 0.85 * snare, 0.2 + 0.8 * tune))
+    return out
+
+
+def draw(size, shifts, beat=None):
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
-    paint(cairo.Context(surface), size, waves)
+    paint(cairo.Context(surface), size, shifts, beat)
     return surface
+
+
+def grain(image, noise=None):
+    noise = noise or Image.effect_noise(image.size, 60).convert("RGB")
+    rgb = image.convert("RGB")
+    grained = Image.blend(rgb, ImageChops.overlay(rgb, noise), GRAIN)
+    grained.putalpha(image.getchannel("A"))
+    return grained
 
 
 def to_image(surface, size):
@@ -97,49 +183,38 @@ def to_image(surface, size):
 def main():
     DOCS.mkdir(exist_ok=True)
 
-    to_image(draw(RENDER, POSE), ICON).save(DOCS / "icon.png")
+    still = (0,) * len(HILLS)
+    grain(to_image(draw(RENDER, still), ICON)).save(DOCS / "icon.png")
 
     # The preferences scale the logo to the screen, so it goes out as a vector,
     # sized in pixels rather than in cairo's default points.
     logo = cairo.SVGSurface(str(ICONS / "logo.svg"), ICON, ICON)
     logo.set_document_unit(cairo.SVGUnit.PX)
-    paint(cairo.Context(logo), ICON, POSE)
+    paint(cairo.Context(logo), ICON, still)
     logo.finish()
 
     frames = []
+    noise = Image.effect_noise((FRAME, FRAME), 60).convert("RGB")
     count = round(LOOP_S * FPS)
+    song = music(count)
     for n in range(count):
         t = n / count
-        waves = [
-            (math.sin(2 * math.pi * turns * t + phase) + 1) / 2
-            for turns, phase in zip(TURNS, PHASES)
-        ]
-        frames.append(to_image(draw(RENDER, waves), FRAME))
+        shifts = [-2 * math.pi * turns * t for turns in TURNS]
+        frames.append(grain(to_image(draw(RENDER, shifts, (t, song[n])), FRAME), noise))
 
-    # One palette for every frame, or the colours crawl from frame to frame:
-    # the first frame builds it and the rest are mapped onto it. The last entry
-    # is left over for what surrounds the tile.
-    base = frames[0].convert("RGB").quantize(colors=COLOURS, dither=Image.NONE)
-    masked = []
-    for frame in frames:
-        quantized = frame.convert("RGB").quantize(palette=base, dither=Image.NONE)
-        quantized = quantized.convert("P")
-        alpha = frame.getchannel("A").point(lambda a: 255 if a < 128 else 0)
-        quantized.paste(COLOURS, alpha)
-        masked.append(quantized)
-
-    masked[0].save(
-        DOCS / "equalizer.gif",
+    # WebP rather than GIF: full colour, so the grain and the fog keep their
+    # tones instead of banding into a palette, and a far smaller file.
+    frames[0].save(
+        DOCS / "equalizer.webp",
         save_all=True,
-        append_images=masked[1:],
+        append_images=frames[1:],
         duration=round(1000 / FPS),
         loop=0,
-        transparency=COLOURS,
-        disposal=2,
-        optimize=True,
+        quality=QUALITY,
+        method=6,
     )
 
-    print(f"wrote {DOCS / 'icon.png'}, {DOCS / 'equalizer.gif'} and {ICONS / 'logo.svg'}")
+    print(f"wrote {DOCS / 'icon.png'}, {DOCS / 'equalizer.webp'} and {ICONS / 'logo.svg'}")
 
 
 if __name__ == "__main__":
