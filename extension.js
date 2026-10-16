@@ -3084,6 +3084,15 @@ class MediaModel {
 
         this._source.players.forEach(player => this._addPlayer(player));
         this.sync();
+
+        // A shell on its way out takes the actors down without calling
+        // destroy() below, and players keep leaving the bus after that.
+        this.stack.connect('destroy', () => this._stopListening());
+    }
+
+    _stopListening() {
+        this._source?.disconnectObject(this);
+        this._players.forEach(player => player.disconnectObject(this));
     }
 
     _addPlayer(player) {
@@ -3212,10 +3221,9 @@ class MediaModel {
     }
 
     destroy() {
-        this._source?.disconnectObject(this);
+        this._stopListening();
         this._source?.destroy();
         this._source = null;
-        this._players.forEach(player => player.disconnectObject(this));
         this._players.clear();
         this._shown.clear();
         this.stack?.destroy();
