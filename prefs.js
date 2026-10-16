@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import Adw from 'gi://Adw';
+import Cairo from 'cairo';
 import Gdk from 'gi://Gdk';
 import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
@@ -39,9 +40,30 @@ const WALLETS = [
 const QR_DIR = 'icons/qr';
 const QR_SIZE = 168;
 
-// The icon from tools/gen-icon.py, at the top of the About page.
-const LOGO_FILE = 'icons/logo.svg';
+// The icon at the top of the About page: the hills of tools/gen-icon.py, drawn
+// here so they drift the way they do in the README. Same numbers as there.
 const LOGO_SIZE = 96;
+const LOGO_CORNER = 0.22;
+const LOGO_TILE = [0.14, 0.14, 0.15];
+const LOGO_RIM = 0.0078;
+const LOGO_RIM_ALPHA = 0.20;
+const LOGO_HILLS = [
+    [[0.42, 0.42, 0.43], 0.55, 0.488, 0.117, 0.7, 0],
+    [[0.68, 0.68, 0.67], 0.75, 0.625, 0.090, 0.95, 1],
+    [[0.89, 0.88, 0.85], 0.95, 0.762, 0.066, 1.2, 2],
+];
+const LOGO_STEP = 0.008;
+const LOGO_HAZE = [0.68, 0.68, 0.67];
+const LOGO_HAZE_ALPHA = 0.16;
+const LOGO_HAZE_DEPTH = 0.12;
+const LOGO_LOOP_S = 9;
+const LOGO_TURNS = [1, 2, 3];
+const LOGO_BEATS = 6;
+const LOGO_RISE = 0.3;
+const LOGO_REACT = [0.06, 0.06, 0.065];
+const LOGO_SWELL_WIDTH = 0.2;
+const LOGO_SWELLS = 2;
+const LOGO_CROSSINGS = [1, 1, 2];
 
 const VISIBILITIES = ['always', 'active', 'never'];
 const IGNORED_KEY = 'ignored-players';
@@ -476,10 +498,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         // window of a GNOME app has them.
         const header = new Adw.PreferencesGroup();
         page.add(header);
-        header.add(new Gtk.Image({
-            file: `${this.path}/${LOGO_FILE}`,
-            pixel_size: LOGO_SIZE,
-        }));
+        header.add(this._logo());
         header.add(new Gtk.Label({
             label: this.metadata.name,
             wrap: true,
@@ -536,6 +555,29 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
     }
 
     // A row that opens something in a browser.
+    // Still when the desktop has animations off, and only ticking while the
+    // page is on screen.
+    _logo() {
+        const logo = new Gtk.DrawingArea({
+            content_width: LOGO_SIZE,
+            content_height: LOGO_SIZE,
+            halign: Gtk.Align.CENTER,
+        });
+        let t = null;
+        logo.set_draw_func((area, cr, width) => {
+            paintLogo(cr, width, t);
+            cr.$dispose();
+        });
+        if (Gtk.Settings.get_default().gtk_enable_animations) {
+            logo.add_tick_callback((widget, clock) => {
+                t = clock.get_frame_time() / 1e6 / LOGO_LOOP_S % 1;
+                widget.queue_draw();
+                return true;
+            });
+        }
+        return logo;
+    }
+
     _linkRow(title, subtitle, url) {
         const row = new Adw.ActionRow({title, subtitle, activatable: true});
         row.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic'}));
@@ -858,4 +900,87 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             .filter(app => app.id && app.name)
             .sort((first, second) => first.name.localeCompare(second.name));
     }
+}
+
+function roundedRect(cr, x, y, size, radius) {
+    cr.newSubPath();
+    cr.arc(x + size - radius, y + radius, radius, -Math.PI / 2, 0);
+    cr.arc(x + size - radius, y + size - radius, radius, 0, Math.PI / 2);
+    cr.arc(x + radius, y + size - radius, radius, Math.PI / 2, Math.PI);
+    cr.arc(x + radius, y + radius, radius, Math.PI, 3 * Math.PI / 2);
+    cr.closePath();
+}
+
+// Eases up from nothing to its top at LOGO_RISE into the beat, then dies away.
+function swell(into) {
+    const x = into / LOGO_RISE;
+    return x * x * Math.exp(2 * (1 - x));
+}
+
+function lift(k, t, x) {
+    let total = 0;
+    for (let j = 0; j < LOGO_SWELLS; j++) {
+        const centre = (j / LOGO_SWELLS + k * 0.3 + LOGO_CROSSINGS[k] * t) % 1;
+        let gap = Math.abs(x - centre);
+        gap = Math.min(gap, 1 - gap);
+        total += Math.exp(-((gap / LOGO_SWELL_WIDTH) ** 2));
+    }
+    return total;
+}
+
+// t runs from 0 to 1 over the loop; null draws the still icon.
+function paintLogo(cr, size, t) {
+    let louds = null;
+    if (t !== null) {
+        const beat = Math.floor(t * LOGO_BEATS);
+        const into = t * LOGO_BEATS - beat;
+        const kick = swell(into);
+        louds = [
+            0.15 + 0.85 * kick,
+            0.15 + 0.85 * (beat % 2 === 1 ? kick : 0),
+            0.2 + 0.8 * Math.exp(-(((into - 0.5) * 4) ** 2)),
+        ];
+    }
+
+    roundedRect(cr, 0, 0, size, size * LOGO_CORNER);
+    cr.setSourceRGB(...LOGO_TILE);
+    cr.fillPreserve();
+    cr.save();
+    cr.clip();
+
+    const step = size * LOGO_STEP;
+    LOGO_HILLS.forEach(([colour, alpha, base, height, humps, start], k) => {
+        const shift = t === null ? 0 : -2 * Math.PI * LOGO_TURNS[k] * t;
+        cr.moveTo(0, size);
+        for (let x = 0; x <= size + step; x += step) {
+            const angle = x / size * Math.PI * humps * 2 + start + shift;
+            let y = base - height * Math.sin(angle);
+            if (louds)
+                y -= LOGO_REACT[k] * louds[k] * lift(k, t, Math.min(x / size, 1));
+            cr.lineTo(x, size * y);
+        }
+        cr.lineTo(size, size);
+        cr.closePath();
+        cr.setSourceRGBA(...colour, alpha);
+        cr.fillPreserve();
+
+        if (k < LOGO_HILLS.length - 1) {
+            const top = size * (base - height);
+            const fog = new Cairo.LinearGradient(0, top, 0,
+                top + size * (2 * height + LOGO_HAZE_DEPTH));
+            fog.addColorStopRGBA(0, ...LOGO_HAZE, 0);
+            fog.addColorStopRGBA(1, ...LOGO_HAZE, LOGO_HAZE_ALPHA);
+            cr.setSource(fog);
+            cr.fill();
+        } else {
+            cr.newPath();
+        }
+    });
+    cr.restore();
+
+    const inset = size * LOGO_RIM / 2;
+    roundedRect(cr, inset, inset, size - 2 * inset, size * LOGO_CORNER - inset);
+    cr.setLineWidth(size * LOGO_RIM);
+    cr.setSourceRGBA(1, 1, 1, LOGO_RIM_ALPHA);
+    cr.stroke();
 }

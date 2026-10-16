@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Draws the icon: the README artwork, the animated version of it, and the logo
-on the About page of the preferences.
+"""Draws the icon: the README artwork and the animated version of it. The About
+page of the preferences draws the same hills itself, from the same numbers.
 
 Three layers of hills in fog, the sound drawn as a landscape. In motion each
 layer drifts at its own speed, and swells run slowly along the crests like
@@ -18,7 +18,6 @@ from PIL import Image, ImageChops
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
-ICONS = ROOT / "icons"
 
 # Drawn large and scaled down, so every rounded end and every corner is smooth.
 RENDER = 512
@@ -186,13 +185,6 @@ def main():
     still = (0,) * len(HILLS)
     grain(to_image(draw(RENDER, still), ICON)).save(DOCS / "icon.png")
 
-    # The preferences scale the logo to the screen, so it goes out as a vector,
-    # sized in pixels rather than in cairo's default points.
-    logo = cairo.SVGSurface(str(ICONS / "logo.svg"), ICON, ICON)
-    logo.set_document_unit(cairo.SVGUnit.PX)
-    paint(cairo.Context(logo), ICON, still)
-    logo.finish()
-
     frames = []
     noise = Image.effect_noise((FRAME, FRAME), 60).convert("RGB")
     count = round(LOOP_S * FPS)
@@ -214,7 +206,7 @@ def main():
         method=6,
     )
 
-    print(f"wrote {DOCS / 'icon.png'}, {DOCS / 'equalizer.webp'} and {ICONS / 'logo.svg'}")
+    print(f"wrote {DOCS / 'icon.png'} and {DOCS / 'equalizer.webp'}")
 
 
 if __name__ == "__main__":

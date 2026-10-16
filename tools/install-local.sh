@@ -30,9 +30,7 @@ done
 install_file "$src/schemas/org.gnome.shell.extensions.nowplaying.gschema.xml" \
     "$dst/schemas/org.gnome.shell.extensions.nowplaying.gschema.xml"
 
-# The logo and the QR codes the About page shows, drawn by tools/gen-icon.py
-# and tools/gen-qr.sh.
-install_file "$src/icons/logo.svg" "$dst/icons/logo.svg"
+# The QR codes the About page shows, drawn by tools/gen-qr.sh.
 for f in "$src"/icons/qr/*.svg; do
     install_file "$f" "$dst/icons/qr/$(basename "$f")"
 done
