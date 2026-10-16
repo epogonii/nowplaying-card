@@ -55,6 +55,15 @@ In place of the bars, a spectrum analyzer that moves with the sound itself:
   </picture>
 </p>
 
+Or the hills of the icon, drifting by and rising with it:
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/waves-dark.gif">
+    <img src="docs/waves-light.gif" width="252" alt="Three grey hills drifting by and rising with the music">
+  </picture>
+</p>
+
 Or no button of its own, and the card at the bottom of Quick Settings:
 
 <p align="center">
@@ -104,7 +113,8 @@ Preferences:
 - Or a spectrum analyzer that moves with the sound itself, like the meter on a
   hi-fi: segments, solid columns or columns mirrored around the middle, eight
   to thirty-two of them, in the theme colour, with a red top, green to red or a
-  rainbow, and peaks that hang on for a moment
+  rainbow, and peaks that hang on for a moment; or the hills of the icon, in
+  its greys, drifting by and rising with the sound
 - Follows the system light and dark theme and switches with it
 - Hides GNOME's own media controls while it runs, and gives them straight back
   when it stops
@@ -178,7 +188,7 @@ Four pages, in the order the window shows them.
 | Accent colour | The bars in the system accent colour, GNOME 47 or later; cycling colours keep their own |
 | Animate the icon | Move the equalizer bars during playback |
 | Show the spectrum | Columns that follow the sound in place of the bars in the top bar |
-| Shape | Segments, solid columns, or columns mirrored around the middle |
+| Shape | Segments, solid columns, columns mirrored around the middle, or waves: the hills of the icon, which keep its greys |
 | Colours | The theme colour, red at the top, green to red, or a rainbow |
 | Columns | Eight to thirty-two; more columns make the icon wider |
 | Peak markers | Hold the top of each column for a moment |

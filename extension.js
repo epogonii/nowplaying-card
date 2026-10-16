@@ -270,6 +270,21 @@ const PEAK_FALL = 1;
 const UNLIT = 0.22;
 const RED_FROM = 0.75;
 const YELLOW_FROM = 0.5;
+// The hills of the icon, back to front: rest, swell, humps across two panel
+// heights, start, how far the sound lifts it, turns per WAVE_LOOP_S.
+const WAVES = [
+    [0.512, 0.117, 0.7, 0, 0.3, 1],
+    [0.375, 0.090, 0.95, 1, 0.32, 2],
+    [0.238, 0.066, 1.2, 2, 0.3, 3],
+];
+const WAVE_LOOP_S = 3.9;
+// How long the waves take to rise into a louder sound, where columns jump.
+const WAVE_RISE_S = 0.2;
+// The icon's greys on a dark panel, then the same steps on a light one.
+const WAVE_INKS = [
+    [[0.29, 0.29, 0.30], [0.58, 0.58, 0.58], [0.87, 0.86, 0.83]],
+    [[0.72, 0.72, 0.71], [0.47, 0.47, 0.47], [0.20, 0.20, 0.21]],
+];
 
 const SPECTRUM_STALE_MS = 500;
 // Long enough for the gap between two tracks, so it costs no restart.
@@ -334,6 +349,7 @@ class EqualizerIcon extends St.DrawingArea {
         this._frameId = 0;
         this._start = GLib.get_monotonic_time();
         this._painted = 0;
+        this._drift = 0;
         this._resetLevels();
 
         // A new system theme means a new foreground colour: redraw with it. A
@@ -509,6 +525,9 @@ class EqualizerIcon extends St.DrawingArea {
     _restLevel(i) {
         if (this._iconStyle !== 'spectrum')
             return STATIC_HEIGHTS[i];
+        // The waves start from silence, or every play would make them jump.
+        if (this._shape === 'waves')
+            return 0;
 
         return 0.25 + 0.45 * Math.sin(Math.PI * (i + 0.5) / this._columns);
     }
@@ -538,9 +557,12 @@ class EqualizerIcon extends St.DrawingArea {
         const bands = this._analyzer?.bands ?? null;
         const real = bands !== null || this._analyzer?.listening === true;
         const spectrum = this._iconStyle === 'spectrum';
+        const waves = spectrum && this._shape === 'waves';
         const count = this._levels.length;
 
         this._lastStep = now;
+        // The waves drift only while they move; a long gap counts as four frames.
+        this._drift = (this._drift + Math.min(dt, 4 * FRAME_MS / 1000)) % WAVE_LOOP_S;
 
         for (let i = 0; i < count; i++) {
             let level = 0;
@@ -558,7 +580,9 @@ class EqualizerIcon extends St.DrawingArea {
                 level = this._fakeLevel(i, t);
             }
 
-            if (!real || level >= this._levels[i])
+            if (waves && real && level > this._levels[i])
+                this._levels[i] += (level - this._levels[i]) * Math.min(1, dt / WAVE_RISE_S);
+            else if (!real || level >= this._levels[i])
                 this._levels[i] = level;
             else
                 this._levels[i] = Math.max(level, this._levels[i] - FALL * dt);
@@ -654,6 +678,11 @@ class EqualizerIcon extends St.DrawingArea {
 
     // Unlit segments are drawn faintly, so the grid shows while it is quiet.
     _repaintSpectrum(cr, color, lightInk, height) {
+        if (this._shape === 'waves') {
+            this._repaintWaves(cr, lightInk, height, color.alpha / 255);
+            return;
+        }
+
         // Two pixels a row at least, so a thin panel gets fewer rows.
         const rows = Math.min(ROWS, Math.floor(height / 2));
         if (rows < 1)
@@ -760,6 +789,52 @@ class EqualizerIcon extends St.DrawingArea {
                 cr.fill();
             }
         }
+    }
+
+    // The front hill rides the level, the middle the level and the peaks, the
+    // back the peaks alone; a quiet track settles into the hills of the icon.
+    _repaintWaves(cr, lightInk, height, alpha) {
+        const [width] = this.get_surface_size();
+        const count = this._levels.length;
+        const pitch = width / count;
+        const moving = this._moving;
+        const inks = WAVE_INKS[lightInk ? 0 : 1];
+
+        WAVES.forEach(([rest, swell, humps, start, reach, turns], k) => {
+            const shift = -2 * Math.PI * turns * this._drift / WAVE_LOOP_S;
+            const lift = i => {
+                if (!moving)
+                    return 0;
+                const level = Math.min(this._levels[i], 1);
+                const peak = this._showPeaks ? Math.min(this._peaks[i], 1) : level;
+                return [this._showPeaks ? peak : 0, (level + peak) / 2, level][k];
+            };
+            const y = (x, i) => height * (1 - Math.min(1, rest + reach * lift(i) +
+                swell * Math.sin(Math.PI * humps * x / height + start + shift)));
+
+            const points = [[0, y(0, 0)]];
+            for (let i = 0; i < count; i++) {
+                const x = (i + 0.5) * pitch;
+                points.push([x, y(x, i)]);
+            }
+            points.push([width, y(width, count - 1)]);
+
+            // Through every point as Catmull-Rom, so the crest has no corners.
+            cr.moveTo(0, height);
+            cr.lineTo(...points[0]);
+            for (let j = 0; j < points.length - 1; j++) {
+                const [x0, y0] = points[Math.max(j - 1, 0)];
+                const [x1, y1] = points[j];
+                const [x2, y2] = points[j + 1];
+                const [x3, y3] = points[Math.min(j + 2, points.length - 1)];
+                cr.curveTo(x1 + (x2 - x0) / 6, y1 + (y2 - y0) / 6,
+                    x2 - (x3 - x1) / 6, y2 - (y3 - y1) / 6, x2, y2);
+            }
+            cr.lineTo(width, height);
+            cr.closePath();
+            cr.setSourceRGBA(...inks[k], alpha);
+            cr.fill();
+        });
     }
 
     // Stop burning frames while the panel is hidden (fullscreen video), and

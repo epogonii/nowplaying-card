@@ -19,7 +19,7 @@ const CONTROLS_SHOWN = ['all', 'play'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
 const EQUALIZER_STYLES = ['bars', 'rounded', 'rainbow'];
-const SPECTRUM_SHAPES = ['segments', 'solid', 'mirrored'];
+const SPECTRUM_SHAPES = ['segments', 'solid', 'mirrored', 'waves'];
 const SPECTRUM_COLORS = ['plain', 'classic', 'level', 'rainbow'];
 const SPECTRUM_TEXTS = ['panel', 'title', 'artist-title'];
 
@@ -336,7 +336,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         const shapeRow = new Adw.ComboRow({
             title: _('Shape'),
             model: new Gtk.StringList({
-                strings: [_('Segments'), _('Solid'), _('Mirrored')],
+                strings: [_('Segments'), _('Solid'), _('Mirrored'), _('Waves')],
             }),
         });
         spectrum.add(shapeRow);
@@ -470,11 +470,14 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             iconRow.sensitive = (hasText || appIcon) && !ownText;
             controlsShownRow.sensitive = settings.get_boolean('panel-controls');
             const colors = settings.get_string('spectrum-colors');
-            const spectrumInk = showSpectrum && (colors === 'plain' || colors === 'classic');
+            // The waves keep the greys of the icon.
+            const waves = settings.get_string('spectrum-shape') === 'waves';
+            const spectrumInk = showSpectrum && !waves &&
+                (colors === 'plain' || colors === 'classic');
             accentRow.sensitive = spectrumInk ||
                 settings.get_string('equalizer-style') !== 'rainbow';
             shapeRow.sensitive = showSpectrum;
-            colorsRow.sensitive = showSpectrum;
+            colorsRow.sensitive = showSpectrum && !waves;
             columnsRow.sensitive = showSpectrum;
             peaksRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');
             spectrumTextRow.sensitive = showSpectrum && isPanel;
@@ -484,6 +487,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.connect('changed::panel-app-icon', syncSensitivity);
         settings.connect('changed::panel-controls', syncSensitivity);
         settings.connect('changed::equalizer-style', syncSensitivity);
+        settings.connect('changed::spectrum-shape', syncSensitivity);
         settings.connect('changed::spectrum-colors', syncSensitivity);
         settings.connect('changed::show-spectrum', syncSensitivity);
         settings.connect('changed::spectrum-text', syncSensitivity);
