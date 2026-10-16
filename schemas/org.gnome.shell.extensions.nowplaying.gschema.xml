@@ -139,6 +139,12 @@
       <default>true</default>
       <summary>Animate the equalizer icon</summary>
     </key>
+    <key name="frame-rate" type="i">
+      <default>30</default>
+      <range min="10" max="60"/>
+      <summary>Frames a second</summary>
+      <description>How often the moving icon is drawn. Every frame costs the shell a frame of the whole screen, so fewer cost less.</description>
+    </key>
     <key name="show-spectrum" type="b">
       <default>false</default>
       <summary>Show the spectrum analyzer</summary>

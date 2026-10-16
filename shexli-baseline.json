@@ -7,7 +7,6 @@
         "extension.js"
       ],
       "snippets": [
-        "            this._frameId = this._timeline.connect('new-frame',\n                () => this._onFrame())",
         "        loader.connect('size-prepared', (_loader, w, h) => {\n            width = w;\n            height = h;\n        })",
         "        this._frameId = this._timeline.connect('new-frame',\n            () => this._onFrame())"
       ]
@@ -22,7 +21,8 @@
         "        this._pollId = GLib.timeout_add(GLib.PRIORITY_LOW, delayMs, () => {\n            this._pollId = null;\n            this._fetchPosition();\n            this._updatePoll();\n            return GLib.SOURCE_REMOVE;\n        })",
         "        this._retryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PROPERTY_RETRY_MS,\n            () => {\n                this._retryId = null;\n                missing.forEach(([proxy, iface]) => this._fetchProperties(proxy, iface));\n                return GLib.SOURCE_REMOVE;\n            })",
         "        this._seekPendingId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,\n            SEEK_COALESCE_MS, () => {\n                this._seekPendingId = null;\n                this._seekToSlider();\n                return GLib.SOURCE_REMOVE;\n            })",
-        "        this._volumePendingId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,\n            VOLUME_COALESCE_MS, () => {\n                this._volumePendingId = null;\n                this._pushVolume();\n                return GLib.SOURCE_REMOVE;\n            })"
+        "        this._volumePendingId = GLib.timeout_add(GLib.PRIORITY_DEFAULT,\n            VOLUME_COALESCE_MS, () => {\n                this._volumePendingId = null;\n                this._pushVolume();\n                return GLib.SOURCE_REMOVE;\n            })",
+        "        this._timerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._frameMs,\n            () => this._onFrame())"
       ]
     }
   ]

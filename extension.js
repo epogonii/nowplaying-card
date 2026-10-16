@@ -170,6 +170,7 @@ const DEFAULTS = {
     'hide-builtin-media': true,
     'card-layout': 'auto',
     'animate-icon': true,
+    'frame-rate': 30,
     'equalizer-style': 'rounded',
     'equalizer-accent': false,
     'show-spectrum': false,
@@ -240,12 +241,6 @@ const N_BARS = 3;
 const BAR_WIDTH = 3;
 const BAR_GAP = 2;
 const EQUALIZER_WIDTH = N_BARS * BAR_WIDTH + (N_BARS - 1) * BAR_GAP;
-// The bars are redrawn on the frame clock of the actor, which offers one frame
-// per frame of the screen; this is the shortest gap between two of the frames
-// that are used. 33ms takes every second frame at 60Hz and every fifth at
-// 144Hz, so the step is the same whatever the monitor runs at and half of the
-// frames cost nothing.
-const FRAME_MS = 33;
 const SPEEDS = [7.1, 9.7, 5.3];
 const PHASES = [0, 2.1, 4.2];
 const STATIC_HEIGHTS = [0.35, 0.7, 0.5];
@@ -347,11 +342,10 @@ class EqualizerIcon extends St.DrawingArea {
         this._showPeaks = DEFAULTS['spectrum-peaks'];
         this._analyzer = null;
         this._holding = false;
-        this._timeline = null;
-        this._frameId = 0;
+        this._timerId = 0;
+        this._frameMs = Math.round(1000 / DEFAULTS['frame-rate']);
         this._sleeping = 0;
         this._start = GLib.get_monotonic_time();
-        this._painted = 0;
         this._drift = 0;
         this._resetLevels();
 
@@ -398,6 +392,18 @@ class EqualizerIcon extends St.DrawingArea {
 
     get animate() {
         return this._animate;
+    }
+
+    set frameRate(rate) {
+        const ms = Math.round(1000 / rate);
+        if (this._frameMs === ms)
+            return;
+
+        this._frameMs = ms;
+        if (this._timerId) {
+            this._stopTimer();
+            this._startTimer();
+        }
     }
 
     set allSound(allSound) {
@@ -497,18 +503,8 @@ class EqualizerIcon extends St.DrawingArea {
         if (wanted && this._playing)
             this.wake();
 
-        if (wanted && this._timeline === null) {
-            // A timer of our own fires whenever it likes, and a frame that
-            // lands between two frames of the screen is a frame that shows up
-            // late. The frame clock of the actor never does.
-            this._timeline = new Clutter.Timeline({
-                actor: this,
-                duration: 1000,
-                repeat_count: -1,
-            });
-            this._frameId = this._timeline.connect('new-frame',
-                () => this._onFrame());
-            this._timeline.start();
+        if (wanted && !this._timerId && !this._sleeping) {
+            this._startTimer();
             this._resetLevels();
         } else if (!wanted) {
             this._stopTimer();
@@ -521,14 +517,14 @@ class EqualizerIcon extends St.DrawingArea {
         this._holding = false;
     }
 
-    // The clock offers more frames than these bars have any use for: this takes
-    // one every FRAME_MS and lets the rest go by untouched.
+    // Not the frame clock: that wakes the shell for every frame of the screen.
+    _startTimer() {
+        this._timerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._frameMs,
+            () => this._onFrame());
+    }
+
     _onFrame() {
         const now = GLib.get_monotonic_time();
-        if (now - this._painted < FRAME_MS * 1000)
-            return;
-
-        this._painted = now;
         // The helper may have given up since the last frame.
         if (this._moving)
             this._step(now);
@@ -537,16 +533,28 @@ class EqualizerIcon extends St.DrawingArea {
         this.queue_repaint();
 
         // Flat with nothing playing: stop the clock until a sound comes.
-        if (this._timeline !== null && !this._playing &&
+        if (this._timerId && !this._playing &&
             this._levels.every(level => level === 0) &&
             this._peaks.every(peak => peak === 0)) {
             this._sleeping = now;
-            this._timeline.pause();
+            this._timerId = 0;
+            return GLib.SOURCE_REMOVE;
         }
+        return GLib.SOURCE_CONTINUE;
+    }
+
+    // Keeps the loudest line since the last frame, so a short sound between two
+    // frames still shows.
+    hear(bands) {
+        this._heard = this._heard
+            ? this._heard.map((band, i) => Math.max(band, bands[i]))
+            : bands;
+        if (bands.some(band => band > 0))
+            this.wake();
     }
 
     wake() {
-        if (!this._sleeping || this._timeline === null)
+        if (!this._sleeping)
             return;
 
         const now = GLib.get_monotonic_time();
@@ -554,7 +562,7 @@ class EqualizerIcon extends St.DrawingArea {
         this._start += now - this._sleeping;
         this._lastStep = now;
         this._sleeping = 0;
-        this._timeline.start();
+        this._startTimer();
     }
 
     get _count() {
@@ -587,6 +595,7 @@ class EqualizerIcon extends St.DrawingArea {
         this._peaks = new Array(count).fill(0);
         this._peakTimes = new Array(count).fill(0);
         this._lastStep = GLib.get_monotonic_time();
+        this._heard = null;
         // Asleep, the hill would stay up until the next sound.
         this.wake();
     }
@@ -596,7 +605,8 @@ class EqualizerIcon extends St.DrawingArea {
     _step(now) {
         const dt = (now - this._lastStep) / 1000000;
         const t = (now - this._start) / 1000000;
-        const bands = this._analyzer?.bands ?? null;
+        const bands = this._heard ?? this._analyzer?.bands ?? null;
+        this._heard = null;
         const real = bands !== null || this._analyzer?.listening === true;
         const spectrum = this._iconStyle === 'spectrum';
         const waves = spectrum && this._shape === 'waves';
@@ -604,7 +614,7 @@ class EqualizerIcon extends St.DrawingArea {
 
         this._lastStep = now;
         // The waves drift only while they move; a long gap counts as four frames.
-        this._drift = (this._drift + Math.min(dt, 4 * FRAME_MS / 1000)) % WAVE_LOOP_S;
+        this._drift = (this._drift + Math.min(dt, 4 * this._frameMs / 1000)) % WAVE_LOOP_S;
 
         for (let i = 0; i < count; i++) {
             let level = 0;
@@ -894,12 +904,10 @@ class EqualizerIcon extends St.DrawingArea {
     }
 
     _stopTimer() {
-        if (this._timeline) {
-            this._timeline.stop();
-            this._timeline.disconnect(this._frameId);
-            this._frameId = 0;
+        if (this._timerId) {
+            GLib.source_remove(this._timerId);
+            this._timerId = 0;
         }
-        this._timeline = null;
         this._sleeping = 0;
     }
 });
@@ -1034,8 +1042,7 @@ class SpectrumAnalyzer {
 
         this._bands = Float32Array.from(values, value => Number(value) / 1000);
         this._received = GLib.get_monotonic_time();
-        if (this._bands.some(band => band > 0))
-            this._holders.forEach(holder => holder.wake());
+        this._holders.forEach(holder => holder.hear(this._bands));
     }
 
     _onExit(proc, result) {
@@ -1438,6 +1445,7 @@ const CARD_OPTIONS = {
     sortPlayingFirst: DEFAULTS['sort-playing-first'],
     scrollText: DEFAULTS['scroll-text'],
     animate: DEFAULTS['animate-icon'],
+    frameRate: DEFAULTS['frame-rate'],
     equalizerStyle: DEFAULTS['equalizer-style'],
     equalizerAccent: DEFAULTS['equalizer-accent'],
     analyzer: null,
@@ -1789,6 +1797,7 @@ const MediaCard = GObject.registerClass({
         // No room for columns here, so these bars follow the sound instead.
         this._equalizer.visible = !compact;
         this._equalizer.animate = options.animate;
+        this._equalizer.frameRate = options.frameRate;
         this._equalizer.iconStyle = options.equalizerStyle;
         this._equalizer.accent = options.equalizerAccent;
         this._equalizer.analyzer = options.analyzer;
@@ -3316,6 +3325,7 @@ class MediaModel {
         this.stack.setLayout(readSetting(this._settings, 'card-layout'));
         const spectrum = readSetting(this._settings, 'show-spectrum');
         this.equalizer.animate = readSetting(this._settings, 'animate-icon');
+        this.equalizer.frameRate = readSetting(this._settings, 'frame-rate');
         this.equalizer.iconStyle = spectrum
             ? 'spectrum' : readSetting(this._settings, 'equalizer-style');
         this.equalizer.accent = options.equalizerAccent;
@@ -3342,6 +3352,7 @@ class MediaModel {
             sortPlayingFirst: readSetting(this._settings, 'sort-playing-first'),
             scrollText: readSetting(this._settings, 'scroll-text'),
             animate: readSetting(this._settings, 'animate-icon'),
+            frameRate: readSetting(this._settings, 'frame-rate'),
             equalizerStyle: readSetting(this._settings, 'equalizer-style'),
             // -st-accent-color exists from GNOME 47 on.
             equalizerAccent: SHELL_MAJOR >= 47 &&
@@ -3845,6 +3856,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::panel-index', () => this._rebuild(),
             'changed::indicator-visibility', () => this._host?._syncVisibility(),
             'changed::animate-icon', () => this._host?._model.sync(),
+            'changed::frame-rate', () => this._host?._model.sync(),
             'changed::equalizer-style', () => this._host?._model.sync(),
             'changed::equalizer-accent', () => this._host?._model.sync(),
             'changed::show-spectrum', () => this._host?._model.sync(),

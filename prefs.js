@@ -321,6 +321,18 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         icon.add(animateRow);
 
+        const frameRateRow = new Adw.SpinRow({
+            title: _('Frames a second'),
+            subtitle: _('Fewer cost the shell less'),
+            adjustment: new Gtk.Adjustment({
+                lower: 10,
+                upper: 60,
+                step_increment: 5,
+                page_increment: 10,
+            }),
+        });
+        icon.add(frameRateRow);
+
         const spectrum = new Adw.PreferencesGroup({
             title: _('Spectrum analyzer'),
             description: _('Columns in the top bar that follow what is playing; the bars on the card follow it too. The sound is measured on this computer and kept nowhere. Without GStreamer\'s PulseAudio plugin the equalizer only pretends, and before GNOME 50.2 the microphone indicator shows while it listens.'),
@@ -448,6 +460,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('sort-playing-first', sortRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('equalizer-accent', accentRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('animate-icon', animateRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('frame-rate', frameRateRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-spectrum', spectrumRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-columns', columnsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-peaks', peaksRow, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -488,6 +501,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             columnsRow.sensitive = showSpectrum;
             peaksRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');
             allSoundRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');
+            frameRateRow.sensitive = settings.get_boolean('animate-icon');
             spectrumTextRow.sensitive = showSpectrum && isPanel;
         };
         settings.connect('changed::location', syncSensitivity);

@@ -187,6 +187,7 @@ Four pages, in the order the window shows them.
 | Icon style | Square ends, rounded ends, or cycling colours |
 | Accent colour | The bars in the system accent colour, GNOME 47 or later; cycling colours keep their own |
 | Animate the icon | Move the equalizer bars during playback |
+| Frames a second | 10 to 60, 30 by default; fewer cost the shell less |
 | Show the spectrum | Columns that follow the sound in place of the bars in the top bar |
 | Follow all sound | Calls and games move the spectrum too, even with nothing playing |
 | Shape | Segments, solid columns, columns mirrored around the middle, or waves: the hills of the icon, which keep its greys |
