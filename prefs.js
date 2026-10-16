@@ -569,11 +569,15 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             cr.$dispose();
         });
         if (Gtk.Settings.get_default().gtk_enable_animations) {
-            logo.add_tick_callback((widget, clock) => {
-                t = clock.get_frame_time() / 1e6 / LOGO_LOOP_S % 1;
-                widget.queue_draw();
-                return true;
+            let tick = 0;
+            logo.connect('map', () => {
+                tick = logo.add_tick_callback((widget, clock) => {
+                    t = clock.get_frame_time() / 1e6 / LOGO_LOOP_S % 1;
+                    widget.queue_draw();
+                    return true;
+                });
             });
+            logo.connect('unmap', () => logo.remove_tick_callback(tick));
         }
         return logo;
     }
