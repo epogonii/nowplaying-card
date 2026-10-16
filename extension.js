@@ -574,13 +574,19 @@ class EqualizerIcon extends St.DrawingArea {
     }
 
     vfunc_repaint() {
+        // A sync on the way out can still ask for a frame once the icon is off
+        // the panel.
+        const parent = this.get_parent();
+        if (!parent)
+            return;
+
         const themeNode = this.get_theme_node();
         const [, height] = this.get_surface_size();
         const cr = this.get_context();
         const color = themeNode.get_foreground_color();
         // The text beside the icon tells a light panel from a dark one; with
         // the accent colour on, the icon's own colour does not.
-        const text = this.get_parent().get_theme_node().get_foreground_color();
+        const text = parent.get_theme_node().get_foreground_color();
         const lightInk = (text.red + text.green + text.blue) / 3 > 127;
 
         if (this._iconStyle === 'spectrum') {
