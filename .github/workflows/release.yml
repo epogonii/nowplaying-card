@@ -15,13 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ZIP: nowplaying@epogonii.github.io.shell-extension.zip
+      LEGACY_ZIP: nowplaying@epogonii.github.io.gnome-43.shell-extension.zip
     steps:
       - uses: actions/checkout@v5
 
       - name: Install glib-compile-schemas
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libglib2.0-bin
+          sudo apt-get install -y --no-install-recommends libglib2.0-bin zip
 
       - name: The tag and metadata.json must agree
         run: |
@@ -45,6 +46,11 @@ jobs:
             icons/qr/solana.svg \
             schemas/org.gnome.shell.extensions.nowplaying.gschema.xml
 
+      # GNOME 43 and 44 load extensions without ES modules; extensions.gnome.org
+      # takes this one as a separate upload for those shells.
+      - name: Build the zip for GNOME 43 and 44
+        run: python3 tools/build-legacy.py --zip
+
       # The changelog section for this version becomes the release notes; if
       # there is none, let GitHub write them from the commits. A tag that gets
       # moved to a later commit runs this again, so the release that is already
@@ -60,9 +66,9 @@ jobs:
             if [ -s notes.md ]; then
               gh release edit "$GITHUB_REF_NAME" --title "$version" --notes-file notes.md
             fi
-            gh release upload "$GITHUB_REF_NAME" "$ZIP" --clobber
+            gh release upload "$GITHUB_REF_NAME" "$ZIP" "$LEGACY_ZIP" --clobber
           elif [ -s notes.md ]; then
-            gh release create "$GITHUB_REF_NAME" --title "$version" --notes-file notes.md "$ZIP"
+            gh release create "$GITHUB_REF_NAME" --title "$version" --notes-file notes.md "$ZIP" "$LEGACY_ZIP"
           else
-            gh release create "$GITHUB_REF_NAME" --title "$version" --generate-notes "$ZIP"
+            gh release create "$GITHUB_REF_NAME" --title "$version" --generate-notes "$ZIP" "$LEGACY_ZIP"
           fi

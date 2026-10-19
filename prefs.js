@@ -68,6 +68,65 @@ const LOGO_CROSSINGS = [1, 1, 2];
 const VISIBILITIES = ['always', 'active', 'never'];
 const IGNORED_KEY = 'ignored-players';
 
+// SwitchRow and SpinRow came with libadwaita 1.4; GNOME 43 and 44 ship 1.2 and
+// 1.3. There they are an ActionRow with the widget as a suffix, carrying the
+// property a setting binds to, so the rest of the page does not tell them apart.
+const SwitchRow = Adw.SwitchRow ?? GObject.registerClass({
+    Properties: {
+        'active': GObject.ParamSpec.boolean('active', '', '',
+            GObject.ParamFlags.READWRITE, false),
+    },
+}, class SwitchRow extends Adw.ActionRow {
+    _init(params) {
+        super._init(params);
+        this._active = false;
+        const toggle = new Gtk.Switch({valign: Gtk.Align.CENTER});
+        this.add_suffix(toggle);
+        this.activatable_widget = toggle;
+        toggle.bind_property('active', this, 'active',
+            GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE);
+    }
+
+    get active() {
+        return this._active;
+    }
+
+    set active(active) {
+        if (this._active === active)
+            return;
+        this._active = active;
+        this.notify('active');
+    }
+});
+
+const SpinRow = Adw.SpinRow ?? GObject.registerClass({
+    Properties: {
+        'value': GObject.ParamSpec.double('value', '', '',
+            GObject.ParamFlags.READWRITE, -Number.MAX_VALUE, Number.MAX_VALUE, 0),
+    },
+}, class SpinRow extends Adw.ActionRow {
+    _init({adjustment, ...params}) {
+        super._init(params);
+        this._value = adjustment.value;
+        const spin = new Gtk.SpinButton({adjustment, valign: Gtk.Align.CENTER});
+        this.add_suffix(spin);
+        this.activatable_widget = spin;
+        spin.bind_property('value', this, 'value',
+            GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE);
+    }
+
+    get value() {
+        return this._value;
+    }
+
+    set value(value) {
+        if (this._value === value)
+            return;
+        this._value = value;
+        this.notify('value');
+    }
+});
+
 export default class NowPlayingPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
@@ -108,21 +167,17 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         const locationRow = new Adw.ComboRow({
             title: _('Location'),
             subtitle: _('Own panel button, or embedded in Quick Settings'),
-            model: new Gtk.StringList({
-                strings: [_('Panel button'), _('Quick Settings')],
-            }),
+            model: Gtk.StringList.new([_('Panel button'), _('Quick Settings')]),
         });
         placement.add(locationRow);
 
         const boxRow = new Adw.ComboRow({
             title: _('Panel area'),
-            model: new Gtk.StringList({
-                strings: [_('Left'), _('Center'), _('Right')],
-            }),
+            model: Gtk.StringList.new([_('Left'), _('Center'), _('Right')]),
         });
         placement.add(boxRow);
 
-        const indexRow = new Adw.SpinRow({
+        const indexRow = new SpinRow({
             title: _('Position'),
             subtitle: _('Order within the panel area'),
             adjustment: new Gtk.Adjustment({
@@ -143,13 +198,11 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         const textRow = new Adw.ComboRow({
             title: _('Track in the panel'),
             subtitle: _('Text shown next to the icon'),
-            model: new Gtk.StringList({
-                strings: [_('Nothing'), _('Title'), _('Artist and title')],
-            }),
+            model: Gtk.StringList.new([_('Nothing'), _('Title'), _('Artist and title')]),
         });
         panel.add(textRow);
 
-        const textWidthRow = new Adw.SpinRow({
+        const textWidthRow = new SpinRow({
             title: _('Text width'),
             subtitle: _('Longest the text may get, in pixels'),
             adjustment: new Gtk.Adjustment({
@@ -161,19 +214,19 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         panel.add(textWidthRow);
 
-        const fixedWidthRow = new Adw.SwitchRow({
+        const fixedWidthRow = new SwitchRow({
             title: _('Fixed text width'),
             subtitle: _('Keep the full width, so nothing moves between tracks'),
         });
         panel.add(fixedWidthRow);
 
-        const iconRow = new Adw.SwitchRow({
+        const iconRow = new SwitchRow({
             title: _('Icon in the panel'),
             subtitle: _('The equalizer next to the text, or the text alone'),
         });
         panel.add(iconRow);
 
-        const appIconRow = new Adw.SwitchRow({
+        const appIconRow = new SwitchRow({
             title: _('Player icon'),
             subtitle: _('The app that is playing, next to the equalizer or in its place'),
         });
@@ -181,13 +234,11 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
 
         const scrollRow = new Adw.ComboRow({
             title: _('Scrolling over the button'),
-            model: new Gtk.StringList({
-                strings: [_('Nothing'), _('Switch tracks'), _('Change volume')],
-            }),
+            model: Gtk.StringList.new([_('Nothing'), _('Switch tracks'), _('Change volume')]),
         });
         panel.add(scrollRow);
 
-        const controlsRow = new Adw.SwitchRow({
+        const controlsRow = new SwitchRow({
             title: _('Controls in the panel'),
             subtitle: _('Transport buttons next to the icon'),
         });
@@ -195,25 +246,19 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
 
         const controlsShownRow = new Adw.ComboRow({
             title: _('Controls shown'),
-            model: new Gtk.StringList({
-                strings: [_('Previous, play and next'), _('Play and pause only')],
-            }),
+            model: Gtk.StringList.new([_('Previous, play and next'), _('Play and pause only')]),
         });
         panel.add(controlsShownRow);
 
         const middleRow = new Adw.ComboRow({
             title: _('Middle click'),
-            model: new Gtk.StringList({
-                strings: [_('Nothing'), _('Play or pause'), _('Next track')],
-            }),
+            model: Gtk.StringList.new([_('Nothing'), _('Play or pause'), _('Next track')]),
         });
         panel.add(middleRow);
 
         const rightRow = new Adw.ComboRow({
             title: _('Right click'),
-            model: new Gtk.StringList({
-                strings: [_('Menu'), _('Play or pause'), _('Next track'), _('Nothing')],
-            }),
+            model: Gtk.StringList.new([_('Menu'), _('Play or pause'), _('Next track'), _('Nothing')]),
         });
         panel.add(rightRow);
 
@@ -223,17 +268,15 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         const layoutRow = new Adw.ComboRow({
             title: _('Card size'),
             subtitle: _('With several players one card is open and the rest are rows'),
-            model: new Gtk.StringList({
-                strings: [
-                    _('Accordion'),
-                    _('Always full'),
-                    _('Always compact'),
-                ],
-            }),
+            model: Gtk.StringList.new([
+                _('Accordion'),
+                _('Always full'),
+                _('Always compact'),
+            ]),
         });
         card.add(layoutRow);
 
-        const maxCardsRow = new Adw.SpinRow({
+        const maxCardsRow = new SpinRow({
             title: _('Cards at once'),
             subtitle: _('Extra players wait their turn; what is playing always gets a card'),
             adjustment: new Gtk.Adjustment({
@@ -245,7 +288,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         card.add(maxCardsRow);
 
-        const sortRow = new Adw.SwitchRow({
+        const sortRow = new SwitchRow({
             title: _('Playing player first'),
             subtitle: _('Keep the card that is playing at the top of the stack'),
         });
@@ -254,37 +297,35 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         const coverRow = new Adw.ComboRow({
             title: _('Cover size'),
             subtitle: _('Medium is as tall as the text beside it'),
-            model: new Gtk.StringList({
-                strings: [_('Small'), _('Medium'), _('Large')],
-            }),
+            model: Gtk.StringList.new([_('Small'), _('Medium'), _('Large')]),
         });
         card.add(coverRow);
 
-        const artworkRow = new Adw.SwitchRow({
+        const artworkRow = new SwitchRow({
             title: _('Album art'),
             subtitle: _('Off, the player\'s icon stands in for the picture'),
         });
         card.add(artworkRow);
 
-        const progressRow = new Adw.SwitchRow({
+        const progressRow = new SwitchRow({
             title: _('Show the progress bar'),
             subtitle: _('Position and length of the track'),
         });
         card.add(progressRow);
 
-        const volumeRow = new Adw.SwitchRow({
+        const volumeRow = new SwitchRow({
             title: _('Show the volume slider'),
             subtitle: _('Only for players that carry a volume of their own'),
         });
         card.add(volumeRow);
 
-        const loopRow = new Adw.SwitchRow({
+        const loopRow = new SwitchRow({
             title: _('Show shuffle and repeat'),
             subtitle: _('Only for players that support them'),
         });
         card.add(loopRow);
 
-        const scrollTextRow = new Adw.SwitchRow({
+        const scrollTextRow = new SwitchRow({
             title: _('Scroll long text'),
             subtitle: _('Move a title sideways instead of cutting it off'),
         });
@@ -299,29 +340,27 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         const iconStyleRow = new Adw.ComboRow({
             title: _('Icon style'),
             subtitle: _('Shape of the equalizer bars'),
-            model: new Gtk.StringList({
-                strings: [
-                    _('Square ends'),
-                    _('Rounded ends'),
-                    _('Cycling colours'),
-                ],
-            }),
+            model: Gtk.StringList.new([
+                _('Square ends'),
+                _('Rounded ends'),
+                _('Cycling colours'),
+            ]),
         });
         icon.add(iconStyleRow);
 
-        const accentRow = new Adw.SwitchRow({
+        const accentRow = new SwitchRow({
             title: _('Accent colour'),
             subtitle: _('Bars in the system accent colour, GNOME 47 or later'),
         });
         icon.add(accentRow);
 
-        const animateRow = new Adw.SwitchRow({
+        const animateRow = new SwitchRow({
             title: _('Animate the icon'),
             subtitle: _('Move the equalizer bars during playback'),
         });
         icon.add(animateRow);
 
-        const frameRateRow = new Adw.SpinRow({
+        const frameRateRow = new SpinRow({
             title: _('Frames a second'),
             subtitle: _('Fewer cost the shell less'),
             adjustment: new Gtk.Adjustment({
@@ -339,13 +378,13 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         cardPage.add(spectrum);
 
-        const spectrumRow = new Adw.SwitchRow({
+        const spectrumRow = new SwitchRow({
             title: _('Show the spectrum'),
             subtitle: _('In place of the bars in the top bar'),
         });
         spectrum.add(spectrumRow);
 
-        const allSoundRow = new Adw.SwitchRow({
+        const allSoundRow = new SwitchRow({
             title: _('Follow all sound'),
             subtitle: _('Calls and games too, even with nothing playing'),
         });
@@ -353,26 +392,22 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
 
         const shapeRow = new Adw.ComboRow({
             title: _('Shape'),
-            model: new Gtk.StringList({
-                strings: [_('Segments'), _('Solid'), _('Mirrored'), _('Waves')],
-            }),
+            model: Gtk.StringList.new([_('Segments'), _('Solid'), _('Mirrored'), _('Waves')]),
         });
         spectrum.add(shapeRow);
 
         const colorsRow = new Adw.ComboRow({
             title: _('Colours'),
-            model: new Gtk.StringList({
-                strings: [
-                    _('Theme colour'),
-                    _('Red at the top'),
-                    _('Green to red'),
-                    _('Rainbow'),
-                ],
-            }),
+            model: Gtk.StringList.new([
+                _('Theme colour'),
+                _('Red at the top'),
+                _('Green to red'),
+                _('Rainbow'),
+            ]),
         });
         spectrum.add(colorsRow);
 
-        const columnsRow = new Adw.SpinRow({
+        const columnsRow = new SpinRow({
             title: _('Columns'),
             subtitle: _('More columns make the icon wider'),
             adjustment: new Gtk.Adjustment({
@@ -384,7 +419,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         spectrum.add(columnsRow);
 
-        const peaksRow = new Adw.SwitchRow({
+        const peaksRow = new SwitchRow({
             title: _('Peak markers'),
             subtitle: _('Hold the top of each column for a moment'),
         });
@@ -392,28 +427,24 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
 
         const spectrumTextRow = new Adw.ComboRow({
             title: _('Track next to the spectrum'),
-            model: new Gtk.StringList({
-                strings: [_('Same as the panel'), _('Title'), _('Artist and title')],
-            }),
+            model: Gtk.StringList.new([_('Same as the panel'), _('Title'), _('Artist and title')]),
         });
         spectrum.add(spectrumTextRow);
 
         const visibilityRow = new Adw.ComboRow({
             title: _('Visibility'),
-            model: new Gtk.StringList({
-                strings: [
-                    _('Always Show in Top Bar'),
-                    _('Show When Active'),
-                    _('Don\'t Show in Top Bar'),
-                ],
-            }),
+            model: Gtk.StringList.new([
+                _('Always Show in Top Bar'),
+                _('Show When Active'),
+                _('Don\'t Show in Top Bar'),
+            ]),
         });
         placement.add(visibilityRow);
 
         const builtin = new Adw.PreferencesGroup({title: _('Built-in controls')});
         playersPage.add(builtin);
 
-        const builtinRow = new Adw.SwitchRow({
+        const builtinRow = new SwitchRow({
             title: _('Hide the built-in media controls'),
             subtitle: _('Keep GNOME\'s own player out of the notification list'),
         });
@@ -658,9 +689,11 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
 
         const address = new Adw.ActionRow({
             title: _('Address'),
-            subtitle_selectable: true,
             subtitle_lines: 0,
         });
+        // Selectable since libadwaita 1.3; before it the copy button is the way.
+        if ('subtitle_selectable' in address)
+            address.subtitle_selectable = true;
         const copy = new Gtk.Button({
             icon_name: 'edit-copy-symbolic',
             tooltip_text: _('Copy the address'),
@@ -889,20 +922,28 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         cancel.connect('clicked', () => window.close());
         header.pack_start(cancel);
 
-        const view = new Adw.ToolbarView({
-            content: new Gtk.ScrolledWindow({
-                hscrollbar_policy: Gtk.PolicyType.NEVER,
-                child: new Adw.Clamp({
-                    child: list,
-                    maximum_size: 420,
-                    margin_top: 12,
-                    margin_bottom: 12,
-                    margin_start: 12,
-                    margin_end: 12,
-                }),
+        const content = new Gtk.ScrolledWindow({
+            hscrollbar_policy: Gtk.PolicyType.NEVER,
+            vexpand: true,
+            child: new Adw.Clamp({
+                child: list,
+                maximum_size: 420,
+                margin_top: 12,
+                margin_bottom: 12,
+                margin_start: 12,
+                margin_end: 12,
             }),
         });
-        view.add_top_bar(header);
+        // ToolbarView came with libadwaita 1.4; before it a box stacks the two.
+        let view;
+        if (Adw.ToolbarView) {
+            view = new Adw.ToolbarView({content});
+            view.add_top_bar(header);
+        } else {
+            view = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
+            view.append(header);
+            view.append(content);
+        }
         window.set_content(view);
 
         const keys = new Gtk.EventControllerKey();

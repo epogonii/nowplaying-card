@@ -19,3 +19,6 @@ tools/nested/nested-home/data/gnome-shell/extensions/*
 
 # Left behind when a tool in tools/ gets imported.
 __pycache__/
+
+# Written by tools/build-legacy.py for GNOME 43 and 44.
+build/

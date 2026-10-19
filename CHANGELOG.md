@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- GNOME 43 and 44 are supported. They load extensions without ES modules, so
+  tools/build-legacy.py builds a zip of their own from the same sources; the
+  release attaches it next to the usual one. The preferences there do without
+  the rows libadwaita 1.4 brought, and the cover art keeps square corners.
+
 ## 1.0.11
 
 - A new icon: grey hills in fog in place of the violet tile.

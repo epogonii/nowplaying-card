@@ -1529,7 +1529,10 @@ const MediaCard = GObject.registerClass({
             layout_manager: new Clutter.FixedLayout(),
             clip_to_allocation: true,
         });
-        coverBin.add_effect(new CoverClip());
+        // On GNOME 43 the effect draws the tile in the wrong place inside the
+        // panel menu, so there the picture keeps square corners.
+        if (SHELL_MAJOR >= 45)
+            coverBin.add_effect(new CoverClip());
         this._coverTile = coverBin;
         coverBin.add_child(this._cover);
         coverBin.add_child(this._badge);
@@ -3909,8 +3912,15 @@ export default class NowPlayingExtension extends Extension {
     _build() {
         if (readSetting(this._settings, 'location') === 'quick-settings') {
             this._host = new NowPlayingIndicator(this._settings);
-            Main.panel.statusArea.quickSettings.addExternalIndicator(
-                this._host, N_COLUMNS);
+            const quickSettings = Main.panel.statusArea.quickSettings;
+            // addExternalIndicator() came with GNOME 44; on 43 it is these
+            // two steps, which is all it does.
+            if (quickSettings.addExternalIndicator) {
+                quickSettings.addExternalIndicator(this._host, N_COLUMNS);
+            } else {
+                quickSettings._indicators.insert_child_at_index(this._host, 0);
+                quickSettings._addItems(this._host.quickSettingsItems, N_COLUMNS);
+            }
         } else {
             this._host = new NowPlayingButton(this._settings,
                 () => this.openPreferences());
