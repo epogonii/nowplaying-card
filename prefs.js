@@ -18,6 +18,7 @@ const RIGHT_CLICKS = ['menu', 'play-pause', 'next', 'none'];
 const CONTROLS_SHOWN = ['all', 'play'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
+const POPUP_WIDTHS = ['narrow', 'standard', 'wide', 'wider'];
 const EQUALIZER_STYLES = ['bars', 'rounded', 'rainbow'];
 const SPECTRUM_SHAPES = ['segments', 'solid', 'mirrored', 'waves'];
 const SPECTRUM_COLORS = ['plain', 'classic', 'level', 'rainbow'];
@@ -260,6 +261,13 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         card.add(coverRow);
 
+        const popupWidthRow = new Adw.ComboRow({
+            title: _('Popup width'),
+            subtitle: _('How wide the card opens from the panel button'),
+            model: Gtk.StringList.new([_('Narrow'), _('Standard'), _('Wide'), _('Wider')]),
+        });
+        card.add(popupWidthRow);
+
         const artworkRow = new Adw.SwitchRow({
             title: _('Album art'),
             subtitle: _('Off, the player\'s icon stands in for the picture'),
@@ -444,6 +452,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         this._bindEnum(settings, 'panel-controls-shown', CONTROLS_SHOWN, controlsShownRow);
         this._bindEnum(settings, 'card-layout', CARD_LAYOUTS, layoutRow);
         this._bindEnum(settings, 'cover-size', COVER_SIZES, coverRow);
+        this._bindEnum(settings, 'popup-width', POPUP_WIDTHS, popupWidthRow);
         this._bindEnum(settings, 'indicator-visibility', VISIBILITIES, visibilityRow);
         this._bindEnum(settings, 'equalizer-style', EQUALIZER_STYLES, iconStyleRow);
         this._bindEnum(settings, 'spectrum-shape', SPECTRUM_SHAPES, shapeRow);
@@ -480,6 +489,8 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             boxRow.sensitive = isPanel;
             indexRow.sensitive = isPanel;
             panel.sensitive = isPanel;
+            // Quick Settings gives the card the width of its grid.
+            popupWidthRow.sensitive = isPanel;
             const showSpectrum = settings.get_boolean('show-spectrum');
             const spectrumText = settings.get_string('spectrum-text');
             const ownText = showSpectrum && spectrumText !== 'panel';

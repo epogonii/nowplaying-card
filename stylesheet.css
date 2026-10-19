@@ -164,6 +164,27 @@
     min-width: 20em;
 }
 
+/* Popup width from the preferences; standard is the rule above. The ceiling
+   moves with the floor, so a large cover can still widen the card a little. */
+.np-menu-narrow .np-card {
+    min-width: 16em;
+}
+
+/* Narrow only gets narrower if the text gives up some of its floor too. */
+.np-menu-narrow .np-card .np-scroll {
+    min-width: 6em;
+}
+
+.np-menu-wide .np-card {
+    min-width: 26em;
+    max-width: 31em;
+}
+
+.np-menu-wider .np-card {
+    min-width: 32em;
+    max-width: 37em;
+}
+
 /* One surface: a lone card uses the menu as its background. */
 .np-menu .np-stack-single .np-card {
     background-color: transparent;

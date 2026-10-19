@@ -19,6 +19,12 @@
     <value value="1" nick="medium"/>
     <value value="2" nick="large"/>
   </enum>
+  <enum id="org.gnome.shell.extensions.nowplaying.popup-width">
+    <value value="0" nick="narrow"/>
+    <value value="1" nick="standard"/>
+    <value value="2" nick="wide"/>
+    <value value="3" nick="wider"/>
+  </enum>
   <enum id="org.gnome.shell.extensions.nowplaying.panel-scroll">
     <value value="0" nick="none"/>
     <value value="1" nick="track"/>
@@ -185,6 +191,11 @@
       <default>'medium'</default>
       <summary>Cover size</summary>
       <description>How large the album art is drawn in a full-size card.</description>
+    </key>
+    <key name="popup-width" enum="org.gnome.shell.extensions.nowplaying.popup-width">
+      <default>'standard'</default>
+      <summary>Popup width</summary>
+      <description>How wide the card opens from the panel button. Quick Settings keeps the width of its grid.</description>
     </key>
     <key name="show-artwork" type="b">
       <default>true</default>

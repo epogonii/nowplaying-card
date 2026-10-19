@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- New setting on the Card page, Popup width: the card that opens from the
+  panel button can be narrow, standard, wide or wider, for longer titles
+  without scrolling (#7). Quick Settings keeps the width of its grid.
+
 ## 1.0.11
 
 - A new icon: grey hills in fog in place of the violet tile.

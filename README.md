@@ -180,6 +180,7 @@ Four pages, in the order the window shows them.
 | Cards at once | How many players the popup shows, one to ten |
 | Playing player first | Keep the card that is playing at the top |
 | Cover size | Artwork in a full card; medium is as tall as the text beside it |
+| Popup width | How wide the card opens from the panel button, narrow to wider; Quick Settings keeps its grid |
 | Album art | Off, the player's icon stands in for the picture and nothing is fetched from the web |
 | Show the progress bar | Position and length of the track |
 | Show the volume slider | For players that carry a volume of their own |

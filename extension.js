@@ -124,6 +124,9 @@ const COVER_SIZES = {
     'large': 1.25,
 };
 
+// Each has an np-menu-* class in the stylesheet.
+const POPUP_WIDTHS = ['narrow', 'standard', 'wide', 'wider'];
+
 // A picture that is not square is scaled until it covers the square the card
 // leaves for it and the rest runs past the edges, where the tile cuts it off.
 // Squeezing it into the square instead would bend everything in the frame.
@@ -182,6 +185,7 @@ const DEFAULTS = {
     'spectrum-text': 'panel',
     'max-cards': 3,
     'cover-size': 'medium',
+    'popup-width': 'standard',
     'show-artwork': true,
     'show-progress': true,
     'show-volume': false,
@@ -3454,6 +3458,7 @@ class NowPlayingButton extends PanelMenu.Button {
 
         this.menu.box.add_style_class_name('np-menu');
         this.menu.box.add_child(this._model.stack);
+        this._syncPopupWidth();
 
         this.menu.connectObject('open-state-changed', (_menu, open) => {
             if (open)
@@ -3672,6 +3677,14 @@ class NowPlayingButton extends PanelMenu.Button {
         this.visible = this._model.shouldShow;
     }
 
+    // The width is the stylesheet's, in em, so it follows the text size.
+    _syncPopupWidth() {
+        const width = readSetting(this._settings, 'popup-width');
+        for (const other of POPUP_WIDTHS)
+            this.menu.box.remove_style_class_name(`np-menu-${other}`);
+        this.menu.box.add_style_class_name(`np-menu-${width}`);
+    }
+
     _syncControls() {
         const player = this._model.activePlayer;
         const wanted = readSetting(this._settings, 'panel-controls') && !!player;
@@ -3869,6 +3882,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::max-cards', () => this._host?._model.sync(),
             'changed::card-layout', () => this._host?._model.sync(),
             'changed::cover-size', () => this._host?._model.sync(),
+            'changed::popup-width', () => this._host?._syncPopupWidth?.(),
             'changed::show-artwork', () => this._host?._model.sync(),
             'changed::show-progress', () => this._host?._model.sync(),
             'changed::show-volume', () => this._host?._model.sync(),
