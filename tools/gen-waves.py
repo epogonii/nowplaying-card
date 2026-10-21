@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Draws the waves spectrum for the README: the 16px panel icon at eight times
-the size, with the numbers read from extension.js and a made-up sound that
-loops over three turns of the drift.
+"""Draws the waves and the ribbon for the README: the 16px panel icon at eight
+times the size, with the numbers read from extension.js and a made-up sound
+that loops over three turns of the drift.
 """
 
+import colorsys
 import json
 import math
 import re
@@ -47,6 +48,10 @@ def read_source():
         "peak_fall": number("PEAK_FALL"),
         "pitch": number("COLUMN_WIDTH") + number("COLUMN_GAP"),
         "gap": number("COLUMN_GAP"),
+        "ribbon": [number(f"RIBBON_{name}") for name in ("REST", "REACH", "PINCH", "SWAY")],
+        "alphas": json.loads(re.search(r"^const RIBBON_ALPHAS = (\[.*\]);", source, re.M).group(1)),
+        "hue": number("HUE_STATIC"),
+        "saturation": number("HUE_SATURATION"),
     }
 
 
@@ -67,7 +72,7 @@ def bands_at(t, length):
     return out
 
 
-def play(src, length):
+def play(src, length, rise):
     """The levels, peaks and drift of every frame, after one loop to settle."""
     count = round(length * FPS)
     dt = 1 / FPS
@@ -84,7 +89,7 @@ def play(src, length):
             a, b = i * BANDS // COLUMNS, (i + 1) * BANDS // COLUMNS
             level = max(bands[a:b])
             if level > levels[i]:
-                levels[i] += (level - levels[i]) * min(1, dt / src["rise"])
+                levels[i] += (level - levels[i]) * (min(1, dt / rise) if rise else 1)
             else:
                 levels[i] = max(level, levels[i] - src["fall"] * dt)
             if levels[i] >= peaks[i]:
@@ -110,23 +115,97 @@ def paint(cr, src, width, height, levels, peaks, drift, inks):
             return height * (1 - min(1, rest + reach * lift +
                                      swell * math.sin(math.pi * humps * x / height + start + shift)))
 
-        points = [(0, y(0, 0))]
-        points += [((i + 0.5) * pitch, y((i + 0.5) * pitch, i)) for i in range(COLUMNS)]
-        points.append((width, y(width, COLUMNS - 1)))
-
         cr.move_to(0, height)
-        cr.line_to(*points[0])
-        for j in range(len(points) - 1):
-            x0, y0 = points[max(j - 1, 0)]
-            x1, y1 = points[j]
-            x2, y2 = points[j + 1]
-            x3, y3 = points[min(j + 2, len(points) - 1)]
-            cr.curve_to(x1 + (x2 - x0) / 6, y1 + (y2 - y0) / 6,
-                        x2 - (x3 - x1) / 6, y2 - (y3 - y1) / 6, x2, y2)
+        curve_through(cr, points_of(width, y))
         cr.line_to(width, height)
         cr.close_path()
         cr.set_source_rgb(*inks[k])
         cr.fill()
+
+
+def points_of(width, y):
+    pitch = width / COLUMNS
+    points = [(0, y(0, 0))]
+    points += [((i + 0.5) * pitch, y((i + 0.5) * pitch, i)) for i in range(COLUMNS)]
+    points.append((width, y(width, COLUMNS - 1)))
+    return points
+
+
+def curve_through(cr, points):
+    cr.line_to(*points[0])
+    for j in range(len(points) - 1):
+        x0, y0 = points[max(j - 1, 0)]
+        x1, y1 = points[j]
+        x2, y2 = points[j + 1]
+        x3, y3 = points[min(j + 2, len(points) - 1)]
+        cr.curve_to(x1 + (x2 - x0) / 6, y1 + (y2 - y0) / 6,
+                    x2 - (x3 - x1) / 6, y2 - (y3 - y1) / 6, x2, y2)
+
+
+def paint_ribbon(cr, src, width, height, levels, peaks, drift, value):
+    """_repaintRibbon in extension.js, in the rainbow and with peak markers on."""
+    rest_scale, reach_scale, pinch, sway = src["ribbon"]
+    middle = height / 2
+    ink = cairo.LinearGradient(0, 0, width, 0)
+    for n in range(9):
+        ink.add_color_stop_rgb(n / 8, *colorsys.hsv_to_rgb((src["hue"] + n / 8) % 1,
+                                                          src["saturation"], value))
+
+    def narrow(x):
+        return max(0, math.sin(math.pi * x / width)) ** 0.9
+
+    for k, (rest, _, humps, start, reach, turns) in enumerate(src["waves"]):
+        shift = -2 * math.pi * turns * drift / src["loop"]
+
+        def lift(i):
+            def one(c):
+                level, peak = min(levels[c], 1), min(peaks[c], 1)
+                return (peak, (level + peak) / 2, level)[k]
+            far = abs(2 * i + 1 - COLUMNS)
+            return max(one(max(far - 1, 0)), one(min(far, COLUMNS - 1)))
+
+        def half(x, i):
+            lobe = abs(math.sin(math.pi * humps * x / height + start + shift))
+            return middle * narrow(x) * min(1, rest_scale * rest * (pinch + (1 - pinch) * lobe ** 1.3) +
+                                            reach_scale * reach * lift(i) * (sway + (1 - sway) * lobe))
+
+        top = points_of(width, lambda x, i: middle - half(x, i))
+        cr.save()
+        cr.move_to(*top[0])
+        curve_through(cr, top)
+        curve_through(cr, [(x, height - y) for x, y in reversed(top)])
+        cr.close_path()
+        cr.clip()
+        cr.set_source(ink)
+        cr.paint_with_alpha(src["alphas"][k])
+        cr.restore()
+
+    fade = cairo.LinearGradient(0, 0, width, 0)
+    for n in range(9):
+        fade.add_color_stop_rgba(n / 8, 0, 0, 0, narrow(n * width / 8))
+    cr.save()
+    cr.rectangle(0, middle - height / 32, width, height / 16)
+    cr.clip()
+    cr.set_source(ink)
+    cr.mask(fade)
+    cr.restore()
+
+
+def save_gif(images, out, colours):
+    # One palette for every frame, taken from a spread of them, or the
+    # edges of the hills would shimmer.
+    width, height = images[0].size
+    sample = Image.new("RGB", (width, height * 8))
+    for k in range(8):
+        sample.paste(images[k * len(images) // 8], (0, k * height))
+    palette = sample.quantize(colors=colours, dither=Image.NONE)
+    quantized = [im.quantize(palette=palette, dither=Image.NONE) for im in images]
+
+    # GIF counts in hundredths, so 30 a second goes as 3, 3 and 4 of them.
+    durations = [40 if n % 3 == 2 else 30 for n in range(len(quantized))]
+    quantized[0].save(out, save_all=True, append_images=quantized[1:],
+                      duration=durations, loop=0, disposal=1, optimize=True)
+    print(f"wrote {out}")
 
 
 def main():
@@ -135,34 +214,27 @@ def main():
 
     width = round((COLUMNS * src["pitch"] - src["gap"]) * SHOWN)
     height = 16 * SHOWN
-    frames = play(src, length)
+    shapes = (
+        ("waves", play(src, length, src["rise"]), COLOURS,
+         lambda cr, frame, ink: paint(cr, src, width, height, *frame, src["inks"][ink])),
+        # The ribbon jumps with the sound the way the columns do, and its
+        # rainbow is drawn brighter on a dark canvas.
+        ("ribbon", play(src, length, 0), 256,
+         lambda cr, frame, ink: paint_ribbon(cr, src, width, height, *frame, 1 if ink == 0 else 0.8)),
+    )
 
-    for name, matte, ink in THEMES:
-        images = []
-        for levels, peaks, drift in frames:
-            surface = cairo.ImageSurface(cairo.FORMAT_RGB24, width, height)
-            cr = cairo.Context(surface)
-            cr.set_source_rgb(*[c / 255 for c in matte])
-            cr.paint()
-            paint(cr, src, width, height, levels, peaks, drift, src["inks"][ink])
-            image = Image.frombuffer("RGBA", (width, height), bytes(surface.get_data()),
-                                     "raw", "BGRA", 0, 1).convert("RGB")
-            images.append(image)
-
-        # One palette for every frame, taken from a spread of them, or the
-        # edges of the hills would shimmer.
-        sample = Image.new("RGB", (width, height * 8))
-        for k in range(8):
-            sample.paste(images[k * len(images) // 8], (0, k * height))
-        palette = sample.quantize(colors=COLOURS, dither=Image.NONE)
-        quantized = [im.quantize(palette=palette, dither=Image.NONE) for im in images]
-
-        out = DOCS / f"waves-{name}.gif"
-        # GIF counts in hundredths, so 30 a second goes as 3, 3 and 4 of them.
-        durations = [40 if n % 3 == 2 else 30 for n in range(len(quantized))]
-        quantized[0].save(out, save_all=True, append_images=quantized[1:],
-                          duration=durations, loop=0, disposal=1, optimize=True)
-        print(f"wrote {out}")
+    for shape, frames, colours, draw in shapes:
+        for name, matte, ink in THEMES:
+            images = []
+            for frame in frames:
+                surface = cairo.ImageSurface(cairo.FORMAT_RGB24, width, height)
+                cr = cairo.Context(surface)
+                cr.set_source_rgb(*[c / 255 for c in matte])
+                cr.paint()
+                draw(cr, frame, ink)
+                images.append(Image.frombuffer("RGBA", (width, height), bytes(surface.get_data()),
+                                               "raw", "BGRA", 0, 1).convert("RGB"))
+            save_gif(images, DOCS / f"{shape}-{name}.gif", colours)
 
 
 if __name__ == "__main__":

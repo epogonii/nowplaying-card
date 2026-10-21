@@ -49,6 +49,7 @@
     <value value="1" nick="solid"/>
     <value value="2" nick="mirrored"/>
     <value value="3" nick="waves"/>
+    <value value="4" nick="ribbon"/>
   </enum>
   <enum id="org.gnome.shell.extensions.nowplaying.spectrum-colors">
     <value value="0" nick="plain"/>
@@ -153,7 +154,7 @@
     <key name="spectrum-shape" enum="org.gnome.shell.extensions.nowplaying.spectrum-shape">
       <default>'segments'</default>
       <summary>Spectrum shape</summary>
-      <description>Columns of separate segments, solid columns, solid columns that grow both ways from the middle, or the hills of the icon rising with the sound.</description>
+      <description>Columns of separate segments, solid columns, solid columns that grow both ways from the middle, the hills of the icon rising with the sound, or the same hills folded over a line through the middle.</description>
     </key>
     <key name="spectrum-colors" enum="org.gnome.shell.extensions.nowplaying.spectrum-colors">
       <default>'classic'</default>

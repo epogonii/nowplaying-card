@@ -274,6 +274,12 @@ const WAVES = [
     [0.238, 0.066, 1.2, 2, 0.3, 3],
 ];
 const WAVE_LOOP_S = 3.9;
+// The ribbon is thin while it is quiet, so the sound has room to swell it.
+const RIBBON_REST = 0.6;
+const RIBBON_REACH = 2.4;
+const RIBBON_PINCH = 0.04;
+const RIBBON_SWAY = 0.5;
+const RIBBON_ALPHAS = [0.45, 0.65, 1];
 // How long the waves take to rise into a louder sound, where columns jump.
 const WAVE_RISE_S = 0.2;
 // The icon's greys on a dark panel, then the same steps on a light one.
@@ -290,6 +296,19 @@ const SPECTRUM_STEADY_MS = 10000;
 const SPECTRUM_TRIES = 3;
 // Must match NO_CAPTURE in spectrum.js.
 const SPECTRUM_NO_CAPTURE = 2;
+
+// Through every point as Catmull-Rom, so the crest has no corners.
+function curveThrough(cr, points) {
+    cr.lineTo(...points[0]);
+    for (let j = 0; j < points.length - 1; j++) {
+        const [x0, y0] = points[Math.max(j - 1, 0)];
+        const [x1, y1] = points[j];
+        const [x2, y2] = points[j + 1];
+        const [x3, y3] = points[Math.min(j + 2, points.length - 1)];
+        cr.curveTo(x1 + (x2 - x0) / 6, y1 + (y2 - y0) / 6,
+            x2 - (x3 - x1) / 6, y2 - (y3 - y1) / 6, x2, y2);
+    }
+}
 
 // Hue in turns, saturation and value in 0 to 1, out as red, green and blue in
 // the same range.
@@ -574,7 +593,7 @@ class EqualizerIcon extends St.DrawingArea {
         if (this._iconStyle !== 'spectrum')
             return STATIC_HEIGHTS[i];
         // The waves start from silence, or every play would make them jump.
-        if (this._shape === 'waves')
+        if (this._shape === 'waves' || this._shape === 'ribbon')
             return 0;
 
         return 0.25 + 0.45 * Math.sin(Math.PI * (i + 0.5) / this._columns);
@@ -734,6 +753,10 @@ class EqualizerIcon extends St.DrawingArea {
             this._repaintWaves(cr, lightInk, height, color.alpha / 255);
             return;
         }
+        if (this._shape === 'ribbon') {
+            this._repaintRibbon(cr, color, lightInk, height);
+            return;
+        }
 
         // Two pixels a row at least, so a thin panel gets fewer rows.
         const rows = Math.min(ROWS, Math.floor(height / 2));
@@ -847,48 +870,123 @@ class EqualizerIcon extends St.DrawingArea {
 
     // The front hill rides the level, the middle the level and the peaks, the
     // back the peaks alone; a quiet track settles into the hills of the icon.
-    _repaintWaves(cr, lightInk, height, alpha) {
-        const [width] = this.get_surface_size();
+    _waveLifts() {
+        const moving = this._moving;
+        return WAVES.map((_, k) => this._levels.map((value, i) => {
+            if (!moving)
+                return 0;
+            const level = Math.min(value, 1);
+            const peak = this._showPeaks ? Math.min(this._peaks[i], 1) : level;
+            return [this._showPeaks ? peak : 0, (level + peak) / 2, level][k];
+        }));
+    }
+
+    _wavePoints(width, y) {
         const count = this._levels.length;
         const pitch = width / count;
-        const moving = this._moving;
+        const points = [[0, y(0, 0)]];
+        for (let i = 0; i < count; i++) {
+            const x = (i + 0.5) * pitch;
+            points.push([x, y(x, i)]);
+        }
+        points.push([width, y(width, count - 1)]);
+        return points;
+    }
+
+    _repaintWaves(cr, lightInk, height, alpha) {
+        const [width] = this.get_surface_size();
         const inks = WAVE_INKS[lightInk ? 0 : 1];
+        const lifts = this._waveLifts();
 
         WAVES.forEach(([rest, swell, humps, start, reach, turns], k) => {
             const shift = -2 * Math.PI * turns * this._drift / WAVE_LOOP_S;
-            const lift = i => {
-                if (!moving)
-                    return 0;
-                const level = Math.min(this._levels[i], 1);
-                const peak = this._showPeaks ? Math.min(this._peaks[i], 1) : level;
-                return [this._showPeaks ? peak : 0, (level + peak) / 2, level][k];
-            };
-            const y = (x, i) => height * (1 - Math.min(1, rest + reach * lift(i) +
+            const y = (x, i) => height * (1 - Math.min(1, rest + reach * lifts[k][i] +
                 swell * Math.sin(Math.PI * humps * x / height + start + shift)));
 
-            const points = [[0, y(0, 0)]];
-            for (let i = 0; i < count; i++) {
-                const x = (i + 0.5) * pitch;
-                points.push([x, y(x, i)]);
-            }
-            points.push([width, y(width, count - 1)]);
-
-            // Through every point as Catmull-Rom, so the crest has no corners.
             cr.moveTo(0, height);
-            cr.lineTo(...points[0]);
-            for (let j = 0; j < points.length - 1; j++) {
-                const [x0, y0] = points[Math.max(j - 1, 0)];
-                const [x1, y1] = points[j];
-                const [x2, y2] = points[j + 1];
-                const [x3, y3] = points[Math.min(j + 2, points.length - 1)];
-                cr.curveTo(x1 + (x2 - x0) / 6, y1 + (y2 - y0) / 6,
-                    x2 - (x3 - x1) / 6, y2 - (y3 - y1) / 6, x2, y2);
-            }
+            curveThrough(cr, this._wavePoints(width, y));
             cr.lineTo(width, height);
             cr.closePath();
             cr.setSourceRGBA(...inks[k], alpha);
             cr.fill();
         });
+    }
+
+    // The hills mirrored about a thread and pinched to a point at both ends.
+    _repaintRibbon(cr, color, lightInk, height) {
+        const [width] = this.get_surface_size();
+        const middle = height / 2;
+        const alpha = color.alpha / 255;
+        const count = this._levels.length;
+        const narrow = x => Math.max(0, Math.sin(Math.PI * x / width)) ** 0.9;
+        const ink = this._ribbonInk(color, lightInk, width, height);
+        const lifts = this._waveLifts();
+
+        WAVES.forEach(([rest, , humps, start, reach, turns], k) => {
+            const shift = -2 * Math.PI * turns * this._drift / WAVE_LOOP_S;
+            const lobe = x => Math.abs(Math.sin(Math.PI * humps * x / height + start + shift));
+            // Low notes in the middle, where there is the most room.
+            const lift = i => {
+                const far = Math.abs(2 * i + 1 - count);
+                return Math.max(lifts[k][Math.max(far - 1, 0)], lifts[k][Math.min(far, count - 1)]);
+            };
+            const half = (x, i) => middle * narrow(x) * Math.min(1,
+                RIBBON_REST * rest * (RIBBON_PINCH + (1 - RIBBON_PINCH) * lobe(x) ** 1.3) +
+                RIBBON_REACH * reach * lift(i) * (RIBBON_SWAY + (1 - RIBBON_SWAY) * lobe(x)));
+            const top = this._wavePoints(width, (x, i) => middle - half(x, i));
+            const bottom = top.map(([x, y]) => [x, height - y]).reverse();
+
+            cr.save();
+            cr.moveTo(...top[0]);
+            curveThrough(cr, top);
+            curveThrough(cr, bottom);
+            cr.closePath();
+            cr.clip();
+            cr.setSource(ink);
+            cr.paintWithAlpha(alpha * RIBBON_ALPHAS[k]);
+            cr.restore();
+        });
+
+        const fade = new Cairo.LinearGradient(0, 0, width, 0);
+        for (let n = 0; n <= 8; n++)
+            fade.addColorStopRGBA(n / 8, 0, 0, 0, alpha * narrow(n * width / 8));
+        cr.save();
+        cr.rectangle(0, middle - height / 32, width, height / 16);
+        cr.clip();
+        cr.setSource(ink);
+        cr.mask(fade);
+        cr.restore();
+    }
+
+    _ribbonInk(color, lightInk, width, height) {
+        if (this._colors === 'rainbow') {
+            // Asleep, the colours stay where they stopped.
+            const now = this._sleeping || GLib.get_monotonic_time();
+            const hue = this._moving ? (now - this._start) / 1000000 / HUE_PERIOD : HUE_STATIC;
+            const ink = new Cairo.LinearGradient(0, 0, width, 0);
+            for (let n = 0; n <= 8; n++) {
+                ink.addColorStopRGB(n / 8,
+                    ...hsvToRgb(hue + n / 8, HUE_SATURATION, lightInk ? 1 : 0.8));
+            }
+            return ink;
+        }
+
+        const theme = [color.red / 255, color.green / 255, color.blue / 255];
+        const [green, yellow, red] = LEVEL_COLORS[lightInk ? 0 : 1];
+        const stops = {
+            classic: [[0, theme], [RED_FROM, red]],
+            level: [[0, green], [YELLOW_FROM, yellow], [RED_FROM, red]],
+        }[this._colors] ?? [[0, theme]];
+        // The zones of the columns, from the middle out.
+        const ink = new Cairo.LinearGradient(0, 0, 0, height);
+        stops.forEach(([from, rgb], j) => {
+            const to = j + 1 < stops.length ? stops[j + 1][0] - 0.1 : 1;
+            for (const edge of [from, to]) {
+                ink.addColorStopRGB((1 - edge) / 2, ...rgb);
+                ink.addColorStopRGB((1 + edge) / 2, ...rgb);
+            }
+        });
+        return ink;
     }
 
     // Stop burning frames while the panel is hidden (fullscreen video), and

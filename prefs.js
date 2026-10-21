@@ -19,7 +19,7 @@ const CONTROLS_SHOWN = ['all', 'play'];
 const CARD_LAYOUTS = ['auto', 'full', 'compact'];
 const COVER_SIZES = ['small', 'medium', 'large'];
 const EQUALIZER_STYLES = ['bars', 'rounded', 'rainbow'];
-const SPECTRUM_SHAPES = ['segments', 'solid', 'mirrored', 'waves'];
+const SPECTRUM_SHAPES = ['segments', 'solid', 'mirrored', 'waves', 'ribbon'];
 const SPECTRUM_COLORS = ['plain', 'classic', 'level', 'rainbow'];
 const SPECTRUM_TEXTS = ['panel', 'title', 'artist-title'];
 
@@ -354,7 +354,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         const shapeRow = new Adw.ComboRow({
             title: _('Shape'),
             model: new Gtk.StringList({
-                strings: [_('Segments'), _('Solid'), _('Mirrored'), _('Waves')],
+                strings: [_('Segments'), _('Solid'), _('Mirrored'), _('Waves'), _('Ribbon')],
             }),
         });
         spectrum.add(shapeRow);

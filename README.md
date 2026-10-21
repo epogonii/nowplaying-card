@@ -65,6 +65,15 @@ Or the hills of the icon, drifting by and rising with it:
   </picture>
 </p>
 
+Or the same hills as a ribbon that swells with the beat, in the spectrum's colours:
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/ribbon-dark.gif">
+    <img src="docs/ribbon-light.gif" width="252" alt="A rainbow ribbon that swells in the middle with the beat and narrows to a point at both ends">
+  </picture>
+</p>
+
 Or no button of its own, and the card at the bottom of Quick Settings:
 
 <p align="center">
@@ -191,7 +200,7 @@ Four pages, in the order the window shows them.
 | Frames a second | 10 to 60, 30 by default; fewer cost the shell less |
 | Show the spectrum | Columns that follow the sound in place of the bars in the top bar |
 | Follow all sound | Calls and games move the spectrum too, even with nothing playing |
-| Shape | Segments, solid columns, columns mirrored around the middle, or waves: the hills of the icon, which keep its greys |
+| Shape | Segments, solid columns, columns mirrored around the middle, waves: the hills of the icon, which keep its greys, or a ribbon: the same hills folded over a line through the middle, narrowing to a point at both ends, in the colours below |
 | Colours | The theme colour, red at the top, green to red, or a rainbow |
 | Columns | Eight to thirty-two; more columns make the icon wider |
 | Peak markers | Hold the top of each column for a moment |
