@@ -359,6 +359,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         spectrum.add(shapeRow);
 
+        const roundedRow = new Adw.SwitchRow({
+            title: _('Rounded ends'),
+            subtitle: _('For solid and mirrored columns'),
+        });
+        spectrum.add(roundedRow);
+
         const colorsRow = new Adw.ComboRow({
             title: _('Colours'),
             model: new Gtk.StringList({
@@ -464,6 +470,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('show-spectrum', spectrumRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-columns', columnsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-peaks', peaksRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('spectrum-rounded', roundedRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-all-sound', allSoundRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-controls', controlsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('panel-text-fixed', fixedWidthRow, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -497,6 +504,8 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             accentRow.sensitive = spectrumInk ||
                 settings.get_string('equalizer-style') !== 'rainbow';
             shapeRow.sensitive = showSpectrum;
+            roundedRow.sensitive = showSpectrum &&
+                ['solid', 'mirrored'].includes(settings.get_string('spectrum-shape'));
             colorsRow.sensitive = showSpectrum && !waves;
             columnsRow.sensitive = showSpectrum;
             peaksRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');

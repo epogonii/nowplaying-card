@@ -175,6 +175,7 @@ const DEFAULTS = {
     'equalizer-accent': false,
     'show-spectrum': false,
     'spectrum-shape': 'segments',
+    'spectrum-rounded': false,
     'spectrum-colors': 'classic',
     'spectrum-columns': 16,
     'spectrum-peaks': true,
@@ -310,6 +311,16 @@ function curveThrough(cr, points) {
     }
 }
 
+function pill(cr, x, y, width, height) {
+    const radius = Math.min(width, height) / 2;
+    cr.newSubPath();
+    cr.arc(x + width - radius, y + radius, radius, -Math.PI / 2, 0);
+    cr.arc(x + width - radius, y + height - radius, radius, 0, Math.PI / 2);
+    cr.arc(x + radius, y + height - radius, radius, Math.PI / 2, Math.PI);
+    cr.arc(x + radius, y + radius, radius, Math.PI, 3 * Math.PI / 2);
+    cr.closePath();
+}
+
 // Hue in turns, saturation and value in 0 to 1, out as red, green and blue in
 // the same range.
 function hsvToRgb(hue, saturation, value) {
@@ -356,6 +367,7 @@ class EqualizerIcon extends St.DrawingArea {
         this._allSound = false;
         this._iconStyle = DEFAULTS['equalizer-style'];
         this._shape = DEFAULTS['spectrum-shape'];
+        this._rounded = DEFAULTS['spectrum-rounded'];
         this._colors = DEFAULTS['spectrum-colors'];
         this._columns = DEFAULTS['spectrum-columns'];
         this._showPeaks = DEFAULTS['spectrum-peaks'];
@@ -471,12 +483,14 @@ class EqualizerIcon extends St.DrawingArea {
         return this._analyzer;
     }
 
-    setSpectrum({shape, colors, columns, peaks}) {
-        if (shape === this._shape && colors === this._colors &&
-            columns === this._columns && peaks === this._showPeaks)
+    setSpectrum({shape, rounded, colors, columns, peaks}) {
+        if (shape === this._shape && rounded === this._rounded &&
+            colors === this._colors && columns === this._columns &&
+            peaks === this._showPeaks)
             return;
 
         this._shape = shape;
+        this._rounded = rounded;
         this._colors = colors;
         this._showPeaks = peaks;
         if (columns !== this._columns) {
@@ -805,6 +819,15 @@ class EqualizerIcon extends St.DrawingArea {
         const edges = [0, YELLOW_FROM, RED_FROM, 1];
         const mirrored = this._shape === 'mirrored';
         const reach = mirrored ? gridHeight / 2 : gridHeight;
+        // A segment is too short to round.
+        const rounded = this._rounded && (this._shape === 'solid' || mirrored);
+        const columnPill = (x, fraction) => {
+            const outer = Math.round(fraction * reach);
+            if (mirrored)
+                pill(cr, x, Math.round(middle) - outer, columnWidth, 2 * outer);
+            else
+                pill(cr, x, bottom - outer, columnWidth, outer);
+        };
         const span = (x, i, from, to, strength) => {
             for (let zone = 0; zone < 3; zone++) {
                 const low = Math.max(from, edges[zone]);
@@ -848,20 +871,43 @@ class EqualizerIcon extends St.DrawingArea {
                 continue;
             }
 
-            const lit = Math.max(level, scale / reach);
-            span(x, i, 0, lit, alpha);
-            span(x, i, lit, 1, alpha * UNLIT);
+            const least = rounded ? columnWidth / (mirrored ? 2 : 1) : scale;
+            const lit = Math.max(level, least / reach);
+            if (rounded) {
+                // The faint track goes around the lit pill, not under it.
+                cr.save();
+                columnPill(x, lit);
+                cr.clip();
+                span(x, i, 0, lit, alpha);
+                cr.restore();
+                cr.save();
+                cr.setFillRule(Cairo.FillRule.EVEN_ODD);
+                columnPill(x, 1);
+                columnPill(x, lit);
+                cr.clip();
+                span(x, i, 0, 1, alpha * UNLIT);
+                cr.restore();
+            } else {
+                span(x, i, 0, lit, alpha);
+                span(x, i, lit, 1, alpha * UNLIT);
+            }
 
             if (peak > lit) {
                 const [r, g, b] = colorAt(i, peak);
                 const outer = Math.round(peak * reach);
+                const mark = rounded ? columnWidth : scale;
+                const dash = y => {
+                    if (rounded)
+                        pill(cr, x, y, columnWidth, mark);
+                    else
+                        cr.rectangle(x, y, columnWidth, mark);
+                };
                 cr.setSourceRGBA(r, g, b, alpha);
                 if (mirrored) {
-                    cr.rectangle(x, Math.round(middle) - outer, columnWidth, scale);
-                    cr.rectangle(x, Math.round(middle) + outer - scale,
-                        columnWidth, scale);
+                    dash(Math.round(middle) - outer);
+                    dash(Math.round(middle) + outer - mark);
                 } else {
-                    cr.rectangle(x, bottom - outer, columnWidth, scale);
+                    dash(bottom - outer);
                 }
                 cr.fill();
             }
@@ -3429,6 +3475,7 @@ class MediaModel {
         this.equalizer.accent = options.equalizerAccent;
         this.equalizer.setSpectrum({
             shape: readSetting(this._settings, 'spectrum-shape'),
+            rounded: readSetting(this._settings, 'spectrum-rounded'),
             colors: readSetting(this._settings, 'spectrum-colors'),
             columns: readSetting(this._settings, 'spectrum-columns'),
             peaks: readSetting(this._settings, 'spectrum-peaks'),
@@ -3959,6 +4006,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::equalizer-accent', () => this._host?._model.sync(),
             'changed::show-spectrum', () => this._host?._model.sync(),
             'changed::spectrum-shape', () => this._host?._model.sync(),
+            'changed::spectrum-rounded', () => this._host?._model.sync(),
             'changed::spectrum-colors', () => this._host?._model.sync(),
             'changed::spectrum-columns', () => this._host?._model.sync(),
             'changed::spectrum-peaks', () => this._host?._model.sync(),

@@ -201,6 +201,7 @@ Four pages, in the order the window shows them.
 | Show the spectrum | Columns that follow the sound in place of the bars in the top bar |
 | Follow all sound | Calls and games move the spectrum too, even with nothing playing |
 | Shape | Segments, solid columns, columns mirrored around the middle, waves: the hills of the icon, which keep its greys, or a ribbon: the same hills folded over a line through the middle, narrowing to a point at both ends, in the colours below |
+| Rounded ends | Solid and mirrored columns with round ends and the peaks as dots; the other shapes keep their own |
 | Colours | The theme colour, red at the top, green to red, or a rainbow |
 | Columns | Eight to thirty-two; more columns make the icon wider |
 | Peak markers | Hold the top of each column for a moment |

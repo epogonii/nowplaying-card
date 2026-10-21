@@ -156,6 +156,11 @@
       <summary>Spectrum shape</summary>
       <description>Columns of separate segments, solid columns, solid columns that grow both ways from the middle, the hills of the icon rising with the sound, or the same hills folded over a line through the middle.</description>
     </key>
+    <key name="spectrum-rounded" type="b">
+      <default>false</default>
+      <summary>Round the ends of the columns</summary>
+      <description>Solid and mirrored columns with round ends and the peaks as dots. Segments are too short to round, and the waves and the ribbon have no ends, so they keep their own shape.</description>
+    </key>
     <key name="spectrum-colors" enum="org.gnome.shell.extensions.nowplaying.spectrum-colors">
       <default>'classic'</default>
       <summary>Spectrum colours</summary>
