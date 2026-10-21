@@ -2597,7 +2597,8 @@ function formatTime(microseconds) {
 
 const CardStack = GObject.registerClass(
 class CardStack extends St.BoxLayout {
-    _init(closeMenu, keepVisible) {
+    // Divided: one background for all the cards, with lines between them.
+    _init(closeMenu, keepVisible, divided) {
         super._init({
             style_class: 'np-stack',
             ...VERTICAL,
@@ -2606,7 +2607,9 @@ class CardStack extends St.BoxLayout {
 
         this._closeMenu = closeMenu;
         this._keepVisible = keepVisible;
+        this._divided = divided;
         this._cards = new Map();
+        this._separators = new Map();
         this._layout = 'auto';
         this._options = CARD_OPTIONS;
         this._manualCard = null;
@@ -2629,6 +2632,11 @@ class CardStack extends St.BoxLayout {
         const card = new MediaCard(player, this._closeMenu, this._options);
         card.connect('expand-request', () => this._onExpandRequest(card));
         this._cards.set(player, card);
+        if (this._divided) {
+            const separator = new St.Widget({style_class: 'np-separator'});
+            this._separators.set(card, separator);
+            this.add_child(separator);
+        }
         this.add_child(card);
         this._syncVisibility();
         this._syncLayout();
@@ -2636,9 +2644,12 @@ class CardStack extends St.BoxLayout {
     }
 
     removePlayer(player) {
-        if (this._manualCard === this._cards.get(player))
+        const card = this._cards.get(player);
+        if (this._manualCard === card)
             this._manualCard = null;
-        this._cards.get(player)?.destroy();
+        this._separators.get(card)?.destroy();
+        this._separators.delete(card);
+        card?.destroy();
         this._cards.delete(player);
         this._syncVisibility();
         this._syncLayout();
@@ -2711,10 +2722,21 @@ class CardStack extends St.BoxLayout {
         const wanted = this._options.sortPlayingFirst ? this._ranked() : cards;
 
         // The placeholder is the first child and stays there.
-        wanted.forEach((card, index) => {
+        let index = 1;
+        let above = false;
+        wanted.forEach(card => {
             card.visible = shown.has(card);
-            if (this.get_child_at_index(index + 1) !== card)
-                this.set_child_at_index(card, index + 1);
+            const separator = this._separators.get(card);
+            if (separator) {
+                separator.visible = card.visible && above;
+                if (this.get_child_at_index(index) !== separator)
+                    this.set_child_at_index(separator, index);
+                index++;
+            }
+            above ||= card.visible;
+            if (this.get_child_at_index(index) !== card)
+                this.set_child_at_index(card, index);
+            index++;
         });
     }
 
@@ -2732,11 +2754,6 @@ class CardStack extends St.BoxLayout {
         // rest as one-line rows. A fixed size from the preferences is a fixed
         // size, and nothing expands.
         const accordion = this._layout === 'auto' && cards.length > 1;
-        // A lone card shares the popup's background, several keep their tiles.
-        if (cards.length > 1)
-            this.remove_style_class_name('np-stack-single');
-        else
-            this.add_style_class_name('np-stack-single');
         this._expandedCard = accordion ? this._expandedCandidate(cards) : null;
 
         cards.forEach(card => {
@@ -3350,14 +3367,14 @@ class MprisSource extends Signals.EventEmitter {
 // Owns the MPRIS source and the two actors a host displays: the panel
 // equalizer and the card stack. The host decides where they go.
 class MediaModel {
-    constructor(settings, {keepStackVisible, closeMenu}) {
+    constructor(settings, {keepStackVisible, divided, closeMenu}) {
         this._settings = settings;
         this._players = new Set();
         this._shown = new Set();
 
         this._analyzer = new SpectrumAnalyzer();
         this.equalizer = new EqualizerIcon();
-        this.stack = new CardStack(closeMenu, keepStackVisible);
+        this.stack = new CardStack(closeMenu, keepStackVisible, divided);
 
         this._source = new MprisSource();
         this._source.connectObject(
@@ -3536,6 +3553,7 @@ class NowPlayingButton extends PanelMenu.Button {
 
         this._model = new MediaModel(settings, {
             keepStackVisible: true,
+            divided: true,
             closeMenu: () => this.menu.close(),
         });
         this._model.notifyVisibility = () => this._syncVisibility();

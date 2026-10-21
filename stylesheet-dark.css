@@ -167,9 +167,28 @@
     min-width: 20em;
 }
 
-/* One surface: a lone card uses the menu as its background. */
-.np-menu .np-stack-single .np-card {
+/* One surface, as on macOS. Only a folded row lights up under the pointer. */
+.np-menu .np-stack {
+    spacing: 4px;
+}
+
+.np-menu .np-stack .np-card,
+.np-menu .np-stack .np-card.np-card-expandable:hover {
     background-color: transparent;
+}
+
+.np-menu .np-stack .np-card.np-card-expandable:focus {
+    background-color: rgba(255, 255, 255, 0.14); /* np-var: hover */
+}
+
+.np-menu .np-stack .np-card.np-card-compact.np-card-expandable:hover {
+    background-color: rgba(255, 255, 255, 0.14); /* np-var: hover */
+}
+
+.np-separator {
+    height: 1px;
+    margin: 0 4px;
+    background-color: rgba(255, 255, 255, 0.14); /* np-var: hover */
 }
 
 .np-stack .np-card-expandable:hover, .np-stack .np-card-expandable:focus {
@@ -295,6 +314,9 @@
 .np-dark .np-control:focus { background-color: rgba(255, 255, 255, 0.14); }
 .np-dark .np-control:insensitive { color: rgba(255, 255, 255, 0.4); }
 .np-dark .np-card-expandable:hover, .np-dark .np-card-expandable:focus { background-color: rgba(255, 255, 255, 0.14); }
+.np-dark .np-menu .np-stack .np-card.np-card-expandable:focus { background-color: rgba(255, 255, 255, 0.14); }
+.np-dark .np-menu .np-stack .np-card.np-card-compact.np-card-expandable:hover { background-color: rgba(255, 255, 255, 0.14); }
+.np-dark .np-separator { background-color: rgba(255, 255, 255, 0.14); }
 .np-dark .np-stack .np-card-expandable:hover, .np-dark .np-stack .np-card-expandable:focus { background-color: rgba(255, 255, 255, 0.14); }
 .np-dark .np-placeholder { color: rgba(255, 255, 255, 0.6); }
 .np-dark .np-cover-button:hover .np-cover, .np-dark .np-cover-button:focus .np-cover { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45); }
@@ -309,6 +331,9 @@
 .np-light .np-control:focus { background-color: rgba(0, 0, 0, 0.10); }
 .np-light .np-control:insensitive { color: rgba(0, 0, 0, 0.35); }
 .np-light .np-card-expandable:hover, .np-light .np-card-expandable:focus { background-color: rgba(0, 0, 0, 0.10); }
+.np-light .np-menu .np-stack .np-card.np-card-expandable:focus { background-color: rgba(0, 0, 0, 0.10); }
+.np-light .np-menu .np-stack .np-card.np-card-compact.np-card-expandable:hover { background-color: rgba(0, 0, 0, 0.10); }
+.np-light .np-separator { background-color: rgba(0, 0, 0, 0.10); }
 .np-light .np-stack .np-card-expandable:hover, .np-light .np-stack .np-card-expandable:focus { background-color: rgba(0, 0, 0, 0.10); }
 .np-light .np-placeholder { color: rgba(0, 0, 0, 0.55); }
 .np-light .np-cover-button:hover .np-cover, .np-light .np-cover-button:focus .np-cover { box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35); }
