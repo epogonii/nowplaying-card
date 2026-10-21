@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.12
 
 - The spectrum has a new shape, Ribbon: the hills of Waves folded over a line
   through the middle and narrowed to a point at both ends, so they float in
