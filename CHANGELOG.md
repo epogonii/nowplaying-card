@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- The spectrum has a new shape, Ribbon: the hills of Waves folded over a line
+  through the middle and narrowed to a point at both ends, so they float in
+  the panel instead of filling a box (#10). The low notes swell the middle and
+  the high ones the sides, and it takes the spectrum's colours, a rainbow
+  along it included, with the far hills fainter.
+- New switch on the Card page, Rounded ends: solid and mirrored columns with
+  round ends, and the peaks as dots. Segments are too short to round and the
+  waves and the ribbon have no ends, so with those it is greyed out.
+- A pause no longer snaps the icon to the same resting shape: the columns
+  fall the way they do when the sound stops and stand where they land, and
+  cycling colours stop where they are.
+- Several players in the popup share one surface again, as on macOS: no tile
+  each, a thin line between them instead. Only a folded row lights up under
+  the pointer.
+
 ## 1.0.11
 
 - A new icon: grey hills in fog in place of the violet tile.
