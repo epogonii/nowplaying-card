@@ -378,6 +378,7 @@ class EqualizerIcon extends St.DrawingArea {
         this._sleeping = 0;
         this._start = GLib.get_monotonic_time();
         this._drift = 0;
+        this._hue = HUE_STATIC;
         this._resetLevels();
 
         // A new system theme means a new foreground colour: redraw with it. A
@@ -489,6 +490,7 @@ class EqualizerIcon extends St.DrawingArea {
             peaks === this._showPeaks)
             return;
 
+        const reshaped = shape !== this._shape;
         this._shape = shape;
         this._rounded = rounded;
         this._colors = colors;
@@ -497,6 +499,9 @@ class EqualizerIcon extends St.DrawingArea {
             this._columns = columns;
             this._resetLevels();
             this.queue_relayout();
+        } else if (reshaped) {
+            // Each shape rests differently.
+            this._resetLevels();
         }
         this.queue_repaint();
     }
@@ -517,8 +522,7 @@ class EqualizerIcon extends St.DrawingArea {
 
     get _moving() {
         const hearing = this._allSound && this._analyzer?.deaf === false;
-        return (this._playing || hearing) && this._animate &&
-            St.Settings.get().enable_animations;
+        return (this._playing || hearing) && this._animated;
     }
 
     _updateTimer() {
@@ -537,11 +541,35 @@ class EqualizerIcon extends St.DrawingArea {
             this.wake();
 
         if (wanted && !this._timerId && !this._sleeping) {
+            // Carry on from where a pause left the icon.
+            this._lastStep = GLib.get_monotonic_time();
+            this._heard = null;
             this._startTimer();
-            this._resetLevels();
+        } else if (!wanted && this._settling) {
+            // Paused: the clock runs on until the icon has come down.
+            if (!this._timerId) {
+                this._sleeping = 0;
+                this._lastStep = GLib.get_monotonic_time();
+                this._startTimer();
+            }
         } else if (!wanted) {
             this._stopTimer();
+            if (!this._animated)
+                this._resetLevels();
         }
+    }
+
+    get _animated() {
+        return this._animate && St.Settings.get().enable_animations;
+    }
+
+    get _settling() {
+        return this._animated && this.mapped && !this._atRest();
+    }
+
+    _atRest() {
+        return this._levels.every((level, i) =>
+            level <= this._restLevel(i) && this._peaks[i] <= level);
     }
 
     _letGo() {
@@ -559,10 +587,13 @@ class EqualizerIcon extends St.DrawingArea {
     _onFrame() {
         const now = GLib.get_monotonic_time();
         // The helper may have given up since the last frame.
-        if (this._moving)
+        if (this._moving) {
             this._step(now);
-        else
+        } else {
             this._updateTimer();
+            if (this._timerId)
+                this._settle(now);
+        }
         this.queue_repaint();
 
         // Flat with nothing playing: stop the clock until a sound comes.
@@ -633,6 +664,24 @@ class EqualizerIcon extends St.DrawingArea {
         this.wake();
     }
 
+    // Only while the icon moves; a long gap counts as four frames.
+    _turn(dt) {
+        const step = Math.min(dt, 4 * this._frameMs / 1000);
+        this._drift = (this._drift + step) % WAVE_LOOP_S;
+        this._hue = (this._hue + step / HUE_PERIOD) % 1;
+    }
+
+    // Falls as on silence but never rises, so a pause stands as it was left.
+    _settle(now) {
+        const dt = (now - this._lastStep) / 1000000;
+        this._lastStep = now;
+        this._turn(dt);
+        this._levels.forEach((level, i) => {
+            this._levels[i] = Math.max(Math.min(level, this._restLevel(i)), level - FALL * dt);
+            this._peaks[i] = Math.max(this._levels[i], this._peaks[i] - PEAK_FALL * dt);
+        });
+    }
+
     // An analyzer that has heard nothing yet counts as silence, and one that
     // gave up as no analyzer at all.
     _step(now) {
@@ -646,8 +695,7 @@ class EqualizerIcon extends St.DrawingArea {
         const count = this._levels.length;
 
         this._lastStep = now;
-        // The waves drift only while they move; a long gap counts as four frames.
-        this._drift = (this._drift + Math.min(dt, 4 * this._frameMs / 1000)) % WAVE_LOOP_S;
+        this._turn(dt);
 
         for (let i = 0; i < count; i++) {
             let level = 0;
@@ -709,8 +757,6 @@ class EqualizerIcon extends St.DrawingArea {
         const gap = BAR_GAP * scale;
         const rounded = this._iconStyle !== 'bars';
         const rainbow = this._iconStyle === 'rainbow';
-        const moving = this._moving;
-        const t = (GLib.get_monotonic_time() - this._start) / 1000000;
         // A round end is half a bar tall on its own, so a bar that short is as
         // short as the shape goes.
         const minHeight = Math.max(Math.round(height * 0.25),
@@ -732,7 +778,7 @@ class EqualizerIcon extends St.DrawingArea {
         }
 
         for (let i = 0; i < N_BARS; i++) {
-            const wave = moving ? this._levels[i] : STATIC_HEIGHTS[i];
+            const wave = this._levels[i];
             const barHeight = minHeight + (maxHeight - minHeight) * wave;
             const x = i * (barWidth + gap);
             const bottom = (height + barHeight) / 2;
@@ -740,7 +786,7 @@ class EqualizerIcon extends St.DrawingArea {
             if (rainbow) {
                 // Standing still means standing on one colour each, so a
                 // paused icon is still three colours and not three greys.
-                const hue = i * HUE_SPREAD + (moving ? t / HUE_PERIOD : HUE_STATIC);
+                const hue = i * HUE_SPREAD + this._hue;
                 const [red, green, blue] = hsvToRgb(hue, HUE_SATURATION, value);
                 cr.setSourceRGBA(red, green, blue, color.alpha / 255);
             }
@@ -788,16 +834,12 @@ class EqualizerIcon extends St.DrawingArea {
         const bottom = top + gridHeight;
         const middle = top + gridHeight / 2;
 
-        const moving = this._moving;
-        const showPeaks = moving && this._showPeaks;
+        const showPeaks = this._showPeaks;
         const count = this._levels.length;
         const alpha = color.alpha / 255;
-        // Asleep, the colours stay where they stopped.
-        const now = this._sleeping || GLib.get_monotonic_time();
-        const t = (now - this._start) / 1000000;
         const ink = [color.red / 255, color.green / 255, color.blue / 255];
         const [green, yellow, red] = LEVEL_COLORS[lightInk ? 0 : 1];
-        const hue = moving ? t / HUE_PERIOD : HUE_STATIC;
+        const hue = this._hue;
 
         const colorAt = (i, fraction) => {
             switch (this._colors) {
@@ -853,7 +895,7 @@ class EqualizerIcon extends St.DrawingArea {
 
         for (let i = 0; i < count; i++) {
             const x = i * pitch;
-            const level = Math.min(moving ? this._levels[i] : this._restLevel(i), 1);
+            const level = Math.min(this._levels[i], 1);
             const peak = showPeaks ? Math.min(this._peaks[i], 1) : 0;
 
             if (this._shape === 'segments') {
@@ -917,10 +959,7 @@ class EqualizerIcon extends St.DrawingArea {
     // The front hill rides the level, the middle the level and the peaks, the
     // back the peaks alone; a quiet track settles into the hills of the icon.
     _waveLifts() {
-        const moving = this._moving;
         return WAVES.map((_, k) => this._levels.map((value, i) => {
-            if (!moving)
-                return 0;
             const level = Math.min(value, 1);
             const peak = this._showPeaks ? Math.min(this._peaks[i], 1) : level;
             return [this._showPeaks ? peak : 0, (level + peak) / 2, level][k];
@@ -1006,9 +1045,7 @@ class EqualizerIcon extends St.DrawingArea {
 
     _ribbonInk(color, lightInk, width, height) {
         if (this._colors === 'rainbow') {
-            // Asleep, the colours stay where they stopped.
-            const now = this._sleeping || GLib.get_monotonic_time();
-            const hue = this._moving ? (now - this._start) / 1000000 / HUE_PERIOD : HUE_STATIC;
+            const hue = this._hue;
             const ink = new Cairo.LinearGradient(0, 0, width, 0);
             for (let n = 0; n <= 8; n++) {
                 ink.addColorStopRGB(n / 8,
