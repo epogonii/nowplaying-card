@@ -1,7 +1,7 @@
 {
   "uuid": "nowplaying@epogonii.github.io",
   "name": "Now Playing Card",
-  "description": "Animated Now Playing indicator with a compact media card: cover art, a seekable progress bar and transport controls for any MPRIS player.",
+  "description": "Animated Now Playing indicator with a compact media card: cover art, a seekable progress bar and transport controls for any MPRIS player: Spotify, browsers, VLC, Rhythmbox and others. Optional spectrum visualizer that moves with the music.",
   "shell-version": [
     "45",
     "46",
