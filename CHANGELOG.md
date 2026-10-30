@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.13
+
+- New setting on the Card page, Range: how many decibels under the loudest
+  note the spectrum still shows, 12 to 48 (#12). Fewer make the columns and
+  hills lower and livelier, which helps chiptunes and other dense sound that
+  kept them near the top; more make them fuller. The bars on the card follow
+  it too. The default, 32, draws everything as before.
+
 ## 1.0.12
 
 - The spectrum has a new shape, Ribbon: the hills of Waves folded over a line
