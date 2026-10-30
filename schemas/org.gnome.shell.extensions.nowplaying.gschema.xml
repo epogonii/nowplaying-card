@@ -177,6 +177,12 @@
       <summary>Show the peaks</summary>
       <description>Leave a mark at the top of each column for a moment after it falls.</description>
     </key>
+    <key name="spectrum-range" type="i">
+      <default>32</default>
+      <range min="12" max="48"/>
+      <summary>Spectrum range</summary>
+      <description>How many decibels under the loudest note the spectrum still shows. Fewer make the columns and hills lower and livelier, more make them fuller.</description>
+    </key>
     <key name="spectrum-all-sound" type="b">
       <default>false</default>
       <summary>Follow all sound</summary>

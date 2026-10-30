@@ -204,12 +204,13 @@ Four pages, in the order the window shows them.
 | Rounded ends | Solid and mirrored columns with round ends and the peaks as dots; the other shapes keep their own |
 | Colours | The theme colour, red at the top, green to red, or a rainbow |
 | Columns | Eight to thirty-two; more columns make the icon wider |
+| Range | 12 to 48 decibels under the loudest note, 32 by default; fewer make the columns and hills lower and livelier, more make them fuller. The bars on the card follow it too |
 | Peak markers | Hold the top of each column for a moment |
 | Track next to the spectrum | Same as the panel, title, or artist and title, while the spectrum is on; the spectrum stays beside it even with Icon in the panel off; panel mode only |
 
 Turned off, the spectrum gives the top bar back its bars in the icon style
-above. Shape, Colours, Columns, Peak markers, Follow all sound and Track next
-to the spectrum do nothing while it is off. With Animate the icon off, or
+above. Shape, Colours, Columns, Range, Peak markers, Follow all sound and Track
+next to the spectrum do nothing while it is off. With Animate the icon off, or
 animations off in the system, the spectrum stands still and does not listen.
 Follow all sound keeps it listening whenever the icon is on screen: the sound
 card does not go to sleep, and before GNOME 50.2 the microphone indicator stays

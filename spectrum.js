@@ -25,8 +25,9 @@ const HIGHEST = RATE / 2;
 // would fill the display and the treble hardly move.
 const TILT = 2;
 // The top follows the loudest band, never below QUIETEST, and the bottom is
-// RANGE dB under it. Below SILENCE nothing shows.
-const RANGE = 32;
+// RANGE dB under it. Below SILENCE nothing shows. The widest range the
+// preferences offer; the shell narrows it.
+const RANGE = 48;
 const QUIETEST = -60;
 const SILENCE = -80;
 const ATTACK = 0.3;

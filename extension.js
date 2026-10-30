@@ -179,6 +179,7 @@ const DEFAULTS = {
     'spectrum-colors': 'classic',
     'spectrum-columns': 16,
     'spectrum-peaks': true,
+    'spectrum-range': 32,
     'spectrum-all-sound': false,
     'spectrum-text': 'panel',
     'max-cards': 3,
@@ -258,8 +259,9 @@ const HUE_STATIC = 0.58;
 const ROWS = 8;
 const COLUMN_WIDTH = 3;
 const COLUMN_GAP = 1;
-// spectrum.js prints this many bands.
+// spectrum.js prints this many bands, over this many dB.
 const BANDS = 32;
+const SPECTRUM_RANGE = 48;
 // FALL and PEAK_FALL are in column heights a second.
 const FALL = 2.2;
 const PEAK_HOLD_MS = 500;
@@ -371,6 +373,7 @@ class EqualizerIcon extends St.DrawingArea {
         this._colors = DEFAULTS['spectrum-colors'];
         this._columns = DEFAULTS['spectrum-columns'];
         this._showPeaks = DEFAULTS['spectrum-peaks'];
+        this._range = DEFAULTS['spectrum-range'];
         this._analyzer = null;
         this._holding = false;
         this._timerId = 0;
@@ -445,6 +448,10 @@ class EqualizerIcon extends St.DrawingArea {
         this._allSound = allSound;
         this._updateTimer();
         this.queue_repaint();
+    }
+
+    set range(range) {
+        this._range = range;
     }
 
     // The spectrum is wider than the bars, so a new style can change the size.
@@ -613,7 +620,9 @@ class EqualizerIcon extends St.DrawingArea {
         this._heard = this._heard
             ? this._heard.map((band, i) => Math.max(band, bands[i]))
             : bands;
-        if (bands.some(band => band > 0))
+        // Under this the range draws nothing.
+        const floor = 1 - this._range / SPECTRUM_RANGE;
+        if (bands.some(band => band > floor))
             this.wake();
     }
 
@@ -693,6 +702,7 @@ class EqualizerIcon extends St.DrawingArea {
         const spectrum = this._iconStyle === 'spectrum';
         const waves = spectrum && this._shape === 'waves';
         const count = this._levels.length;
+        const stretch = SPECTRUM_RANGE / this._range;
 
         this._lastStep = now;
         this._turn(dt);
@@ -705,9 +715,10 @@ class EqualizerIcon extends St.DrawingArea {
                 const from = Math.floor(i * BANDS / count);
                 const to = Math.floor((i + 1) * BANDS / count);
                 for (let band = from; band < to; band++) {
+                    const value = Math.max(0, 1 - (1 - bands[band]) * stretch);
                     level = spectrum
-                        ? Math.max(level, bands[band])
-                        : level + bands[band] / (to - from);
+                        ? Math.max(level, value)
+                        : level + value / (to - from);
                 }
             } else if (!real) {
                 level = this._fakeLevel(i, t);
@@ -1630,6 +1641,7 @@ const CARD_OPTIONS = {
     equalizerStyle: DEFAULTS['equalizer-style'],
     equalizerAccent: DEFAULTS['equalizer-accent'],
     analyzer: null,
+    spectrumRange: DEFAULTS['spectrum-range'],
     maxCards: DEFAULTS['max-cards'],
 };
 
@@ -1982,6 +1994,7 @@ const MediaCard = GObject.registerClass({
         this._equalizer.iconStyle = options.equalizerStyle;
         this._equalizer.accent = options.equalizerAccent;
         this._equalizer.analyzer = options.analyzer;
+        this._equalizer.range = options.spectrumRange;
         this._equalizer.playing = this.playing;
 
         const controlSize = compact
@@ -3536,6 +3549,7 @@ class MediaModel {
         });
         this.equalizer.analyzer = spectrum ? this._analyzer : null;
         this.equalizer.allSound = readSetting(this._settings, 'spectrum-all-sound');
+        this.equalizer.range = options.spectrumRange;
         this.equalizer.playing = this.stack.anyPlaying;
         this.notifyVisibility?.();
     }
@@ -3558,6 +3572,7 @@ class MediaModel {
                 readSetting(this._settings, 'equalizer-accent'),
             analyzer: readSetting(this._settings, 'show-spectrum')
                 ? this._analyzer : null,
+            spectrumRange: readSetting(this._settings, 'spectrum-range'),
             maxCards: readSetting(this._settings, 'max-cards'),
         };
     }
@@ -4065,6 +4080,7 @@ export default class NowPlayingExtension extends Extension {
             'changed::spectrum-colors', () => this._host?._model.sync(),
             'changed::spectrum-columns', () => this._host?._model.sync(),
             'changed::spectrum-peaks', () => this._host?._model.sync(),
+            'changed::spectrum-range', () => this._host?._model.sync(),
             'changed::spectrum-all-sound', () => this._host?._model.sync(),
             'changed::spectrum-text', () => this._host?._model.sync(),
             'changed::max-cards', () => this._host?._model.sync(),

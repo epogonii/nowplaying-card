@@ -390,6 +390,18 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         spectrum.add(columnsRow);
 
+        const rangeRow = new Adw.SpinRow({
+            title: _('Range'),
+            subtitle: _('Decibels under the loudest note that still show; fewer make the spectrum lower and livelier'),
+            adjustment: new Gtk.Adjustment({
+                lower: 12,
+                upper: 48,
+                step_increment: 2,
+                page_increment: 8,
+            }),
+        });
+        spectrum.add(rangeRow);
+
         const peaksRow = new Adw.SwitchRow({
             title: _('Peak markers'),
             subtitle: _('Hold the top of each column for a moment'),
@@ -469,6 +481,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.bind('frame-rate', frameRateRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('show-spectrum', spectrumRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-columns', columnsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        settings.bind('spectrum-range', rangeRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-peaks', peaksRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-rounded', roundedRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('spectrum-all-sound', allSoundRow, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -508,6 +521,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
                 ['solid', 'mirrored'].includes(settings.get_string('spectrum-shape'));
             colorsRow.sensitive = showSpectrum && !waves;
             columnsRow.sensitive = showSpectrum;
+            rangeRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');
             peaksRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');
             allSoundRow.sensitive = showSpectrum && settings.get_boolean('animate-icon');
             frameRateRow.sensitive = settings.get_boolean('animate-icon');
