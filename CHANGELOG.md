@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.14
+
+- VLC up to 3.0.21, which is what Ubuntu 24.04 ships, gets a card when it is
+  started with a file or a playlist (#12). It says at start that it has
+  nothing to play and never takes that back, so the card asks again when
+  playback starts, pauses or stops.
+
 ## 1.0.13
 
 - New setting on the Card page, Range: how many decibels under the loudest

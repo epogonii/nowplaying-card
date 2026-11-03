@@ -3264,7 +3264,12 @@ class MprisPlayer extends Signals.EventEmitter {
         }
 
         this._playerProxy.connectObject(
-            'g-properties-changed', () => this._update(), this);
+            'g-properties-changed', (proxy, changed) => {
+                // VLC before 3.0.22 sends CanPlay once, as false, and never again.
+                if (!proxy.CanPlay && changed.lookup_value('PlaybackStatus', null))
+                    this._fetchProperties(proxy, PLAYER_IFACE);
+                this._update();
+            }, this);
         this._seekedId = this._playerProxy.connectSignal('Seeked',
             (proxy, sender, [positionUs]) => this.emit('seeked', positionUs));
 
