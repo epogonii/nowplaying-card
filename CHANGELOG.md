@@ -43,9 +43,8 @@
 - A pause no longer snaps the icon to the same resting shape: the columns
   fall the way they do when the sound stops and stand where they land, and
   cycling colours stop where they are.
-- Several players in the popup share one surface again, as on macOS: no tile
-  each, a thin line between them instead. Only a folded row lights up under
-  the pointer.
+- Several players in the popup share one surface again: no tile each, a thin
+  line between them instead. Only a folded row lights up under the pointer.
 
 ## 1.0.11
 
