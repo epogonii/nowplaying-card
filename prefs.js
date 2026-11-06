@@ -187,6 +187,18 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         panel.add(scrollRow);
 
+        const volumeStepRow = new Adw.SpinRow({
+            title: _('Volume step'),
+            subtitle: _('Percent per notch of the wheel'),
+            adjustment: new Gtk.Adjustment({
+                lower: 1,
+                upper: 25,
+                step_increment: 1,
+                page_increment: 5,
+            }),
+        });
+        panel.add(volumeStepRow);
+
         const controlsRow = new Adw.SwitchRow({
             title: _('Controls in the panel'),
             subtitle: _('Transport buttons next to the icon'),
@@ -457,6 +469,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         this._bindEnum(settings, 'panel-box', PANEL_BOXES, boxRow);
         this._bindEnum(settings, 'panel-text', PANEL_TEXTS, textRow);
         this._bindEnum(settings, 'panel-scroll', PANEL_SCROLLS, scrollRow);
+        settings.bind('volume-step', volumeStepRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         this._bindEnum(settings, 'panel-middle-click', MIDDLE_CLICKS, middleRow);
         this._bindEnum(settings, 'panel-right-click', RIGHT_CLICKS, rightRow);
         this._bindEnum(settings, 'panel-controls-shown', CONTROLS_SHOWN, controlsShownRow);
@@ -509,6 +522,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             const appIcon = settings.get_boolean('panel-app-icon');
             iconRow.sensitive = (hasText || appIcon) && !ownText;
             controlsShownRow.sensitive = settings.get_boolean('panel-controls');
+            volumeStepRow.sensitive = settings.get_string('panel-scroll') === 'volume';
             const colors = settings.get_string('spectrum-colors');
             // The waves keep the greys of the icon.
             const waves = settings.get_string('spectrum-shape') === 'waves';
@@ -531,6 +545,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         settings.connect('changed::panel-text', syncSensitivity);
         settings.connect('changed::panel-app-icon', syncSensitivity);
         settings.connect('changed::panel-controls', syncSensitivity);
+        settings.connect('changed::panel-scroll', syncSensitivity);
         settings.connect('changed::equalizer-style', syncSensitivity);
         settings.connect('changed::spectrum-shape', syncSensitivity);
         settings.connect('changed::spectrum-colors', syncSensitivity);

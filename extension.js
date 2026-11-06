@@ -112,7 +112,6 @@ const FULL_BADGE_SIZE = 18;
 // How far the badge stops short of the corner of the cover.
 const BADGE_INSET = 2;
 const VOLUME_ICON_SIZE = 16;
-const VOLUME_STEP = 0.05;
 const VOLUME_COALESCE_MS = 100;
 const VOLUME_GUARD_MS = 800;
 
@@ -191,6 +190,7 @@ const DEFAULTS = {
     'sort-playing-first': true,
     'scroll-text': true,
     'panel-scroll': 'track',
+    'volume-step': 5,
     'panel-middle-click': 'play-pause',
     'panel-right-click': 'menu',
     'panel-controls': false,
@@ -3835,7 +3835,8 @@ class NowPlayingButton extends PanelMenu.Button {
             return true;
 
         if (mode === 'volume')
-            return this._model.adjustVolume(-step * VOLUME_STEP);
+            return this._model.adjustVolume(
+                -step * readSetting(this._settings, 'volume-step') / 100);
 
         if (step < 0)
             this._model.next();

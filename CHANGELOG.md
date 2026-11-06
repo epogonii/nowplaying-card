@@ -8,6 +8,9 @@
 - A quick turn of the wheel changes the volume by every notch in it (#14).
   Each notch started from the level the player had last confirmed, so a quick
   turn moved it by a single step.
+- New setting on the Panel page, Volume step: how many percent one notch of
+  the wheel changes the volume by, 1 to 25 (#14). The default, 5, is the step
+  it had.
 
 ## 1.0.14
 

@@ -229,6 +229,7 @@ on. With no player at all, the icon is only there with Visibility set to always.
 | Icon in the panel | The equalizer next to the text, or the text alone |
 | Player icon | The icon of the app that is playing, next to the equalizer, or in its place with Icon in the panel off |
 | Scrolling over the button | Nothing, switch tracks, or change volume |
+| Volume step | How many percent one notch of the wheel changes the volume by |
 | Controls in the panel | Transport buttons next to the icon |
 | Controls shown | Previous, play and next, or play and pause only |
 | Middle click | Nothing, play or pause, or next track |

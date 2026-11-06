@@ -231,6 +231,12 @@
       <summary>Scrolling over the panel button</summary>
       <description>What the mouse wheel does over the button: nothing, switch tracks, or change the player volume.</description>
     </key>
+    <key name="volume-step" type="i">
+      <default>5</default>
+      <range min="1" max="25"/>
+      <summary>Volume step</summary>
+      <description>How many percent one notch of the wheel changes the volume by.</description>
+    </key>
     <key name="panel-middle-click" enum="org.gnome.shell.extensions.nowplaying.panel-middle-click">
       <default>'play-pause'</default>
       <summary>Middle click on the panel button</summary>
