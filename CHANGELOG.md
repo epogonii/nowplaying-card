@@ -5,6 +5,9 @@
 - A notch of the wheel over the panel button counted twice: once as it came
   and once more in the form the shell makes up from it. It is one track or
   one volume step now.
+- A quick turn of the wheel changes the volume by every notch in it (#14).
+  Each notch started from the level the player had last confirmed, so a quick
+  turn moved it by a single step.
 
 ## 1.0.14
 

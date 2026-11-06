@@ -2845,6 +2845,8 @@ class MprisPlayer extends Signals.EventEmitter {
         this._app = null;
         this._seekedId = 0;
         this._pid = 0;
+        this._volumeWritten = 0;
+        this._volumeWrittenAt = 0;
         this._retryId = null;
         this._retries = 0;
         this._cancellable = new Gio.Cancellable();
@@ -2927,6 +2929,14 @@ class MprisPlayer extends Signals.EventEmitter {
         return typeof volume === 'number' ? volume : null;
     }
 
+    // Wheel notches come faster than the player answers, so the next one
+    // starts from the level just written, not the old one still cached.
+    get targetVolume() {
+        if (GLib.get_monotonic_time() - this._volumeWrittenAt < VOLUME_GUARD_MS * 1000)
+            return this._volumeWritten;
+        return this.volume;
+    }
+
     get hasLoop() {
         return this._hasProperty(this._playerProxy, 'LoopStatus');
     }
@@ -2967,8 +2977,9 @@ class MprisPlayer extends Signals.EventEmitter {
     }
 
     setVolume(volume) {
-        this._setProperty('Volume',
-            new GLib.Variant('d', Math.max(0, Math.min(1, volume))));
+        this._volumeWritten = Math.max(0, Math.min(1, volume));
+        this._volumeWrittenAt = GLib.get_monotonic_time();
+        this._setProperty('Volume', new GLib.Variant('d', this._volumeWritten));
     }
 
     setLoopStatus(status) {
@@ -3525,7 +3536,7 @@ class MediaModel {
     // when there is nothing to turn.
     adjustVolume(delta) {
         const player = this.activePlayer;
-        const volume = player?.hasVolume ? player.volume : null;
+        const volume = player?.hasVolume ? player.targetVolume : null;
         if (volume === null)
             return false;
 
