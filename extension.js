@@ -2843,6 +2843,7 @@ class MprisPlayer extends Signals.EventEmitter {
         this._trackCoverUrl = '';
         this._desktopEntry = '';
         this._app = null;
+        this._webApp = null;
         this._seekedId = 0;
         this._pid = 0;
         this._volumeWritten = 0;
@@ -2900,7 +2901,7 @@ class MprisPlayer extends Signals.EventEmitter {
     }
 
     get app() {
-        return this._app;
+        return this._webApp ?? this._app;
     }
 
     get canGoNext() {
@@ -3034,11 +3035,11 @@ class MprisPlayer extends Signals.EventEmitter {
             return;
         }
 
-        this._app?.activate();
+        this.app?.activate();
     }
 
     _findWindow() {
-        const appWindows = this._app?.get_windows() ?? [];
+        const appWindows = this.app?.get_windows() ?? [];
         if (appWindows.length > 0)
             return appWindows[0];
 
@@ -3217,6 +3218,36 @@ class MprisPlayer extends Signals.EventEmitter {
             this._app = this._matchInstalledApp(entry, appSystem);
     }
 
+    // A web app runs in the browser's process and shares its bus name, but its
+    // window has a .desktop file of its own (#13). The window that plays is
+    // the one with the track in its title.
+    _findWebApp() {
+        if (this._pid <= 0)
+            return null;
+
+        const tracker = Shell.WindowTracker.get_default();
+        const windows = global.display.list_all_windows()
+            .filter(window => window.get_pid() === this._pid);
+        const ownApp = window => {
+            const app = tracker.get_window_app(window);
+            return app && !app.is_window_backed() ? app : null;
+        };
+
+        const title = this._trackTitle.toLowerCase();
+        const playing = title.length >= 3 && windows.find(window =>
+            window.get_title()?.toLowerCase().includes(title));
+        if (playing)
+            return ownApp(playing) === this._app ? null : ownApp(playing);
+
+        // Titles lag behind the track, so keep the last one while it is open,
+        // or take the only app the process has windows for.
+        const apps = new Set(windows.map(ownApp));
+        if (this._webApp && apps.has(this._webApp))
+            return this._webApp;
+        const [only] = apps;
+        return apps.size === 1 && only !== this._app ? only : null;
+    }
+
     _matchInstalledApp(entry, appSystem) {
         const wanted = this._wantedNames();
 
@@ -3326,6 +3357,7 @@ class MprisPlayer extends Signals.EventEmitter {
         this._trackCoverUrl = typeof coverUrl === 'string' ? coverUrl : '';
 
         this._resolveApp();
+        this._webApp = this._findWebApp();
 
         this._canPlay = !!this._playerProxy?.CanPlay;
         this.emit('changed');

@@ -11,6 +11,9 @@
 - New setting on the Panel page, Volume step: how many percent one notch of
   the wheel changes the volume by, 1 to 25 (#14). The default, 5, is the step
   it had.
+- A web app pinned from Firefox, with browser.taskbarTabs.enabled on, shows
+  its own icon on the card and in the panel instead of Firefox's (#13). The
+  card goes by the window that has the track in its title.
 
 ## 1.0.14
 
