@@ -589,6 +589,7 @@ export default class ProbeQs extends Extension {
                 get_scroll_direction: () => direction,
                 get_scroll_delta: () => [0, 0],
                 get_button: () => 0,
+                is_pointer_emulated: () => false,
             });
             log(`PROBE WHEEL track up=${button?._onScroll(wheel(Clutter.ScrollDirection.UP))}`);
             log(`PROBE WHEEL track down=${button?._onScroll(wheel(Clutter.ScrollDirection.DOWN))}`);
@@ -699,7 +700,7 @@ export default class ProbeQs extends Extension {
 
         this._at(52.1, () => scrollAt(panelButton()._model.equalizer, -1));
         this._at(52.5, () => log(`PROBE REALSCROLL up menuOpen=${panelButton()?.menu.isOpen} ` +
-            `(expect false, and a Previous in the stub log)`));
+            `(expect false, and one Next in the stub log)`));
 
         // panel-icon off: text alone, and a press on it still opens the menu.
         const edges = tag => {

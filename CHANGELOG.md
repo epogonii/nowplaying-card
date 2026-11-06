@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.15
+
+- A notch of the wheel over the panel button counted twice: once as it came
+  and once more in the form the shell makes up from it. It is one track or
+  one volume step now.
+
 ## 1.0.14
 
 - VLC up to 3.0.21, which is what Ubuntu 24.04 ships, gets a card when it is

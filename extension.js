@@ -3837,6 +3837,10 @@ class NowPlayingButton extends PanelMenu.Button {
     // Wheels click, touchpads slide: a touchpad sends a stream of small deltas
     // and one notch of travel has to stay one action.
     _scrollStep(event) {
+        // A notch also arrives a second time, made up in the other form.
+        if (event.is_pointer_emulated())
+            return 0;
+
         const direction = event.get_scroll_direction();
 
         if (direction === Clutter.ScrollDirection.UP)
