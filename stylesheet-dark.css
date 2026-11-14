@@ -167,7 +167,7 @@
     min-width: 20em;
 }
 
-/* One surface, as on macOS. Only a folded row lights up under the pointer. */
+/* One surface. Only a folded row lights up under the pointer. */
 .np-menu .np-stack {
     spacing: 4px;
 }
