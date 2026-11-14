@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.16
+
+- New switch on the Panel page, Reverse direction: scrolling down over the
+  button goes to the next track and up to the previous one (#16). It is off by
+  default, so the wheel works as before.
+
 ## 1.0.15
 
 - A notch of the wheel over the panel button counted twice: once as it came

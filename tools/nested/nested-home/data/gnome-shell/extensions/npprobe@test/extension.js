@@ -593,6 +593,10 @@ export default class ProbeQs extends Extension {
             });
             log(`PROBE WHEEL track up=${button?._onScroll(wheel(Clutter.ScrollDirection.UP))}`);
             log(`PROBE WHEEL track down=${button?._onScroll(wheel(Clutter.ScrollDirection.DOWN))}`);
+            stateObj()?._settings.set_boolean('panel-scroll-reverse', true);
+            log(`PROBE WHEEL reversed up=${button?._onScroll(wheel(Clutter.ScrollDirection.UP))}`);
+            log(`PROBE WHEEL reversed down=${button?._onScroll(wheel(Clutter.ScrollDirection.DOWN))}`);
+            stateObj()?._settings.set_boolean('panel-scroll-reverse', false);
             stateObj()?._settings.set_string('panel-scroll', 'volume');
             log(`PROBE WHEEL volume up=${button?._onScroll(wheel(Clutter.ScrollDirection.UP))}`);
             stateObj()?._settings.set_string('panel-scroll', 'none');

@@ -190,6 +190,7 @@ const DEFAULTS = {
     'sort-playing-first': true,
     'scroll-text': true,
     'panel-scroll': 'track',
+    'panel-scroll-reverse': false,
     'volume-step': 5,
     'panel-middle-click': 'play-pause',
     'panel-right-click': 'menu',
@@ -3870,7 +3871,8 @@ class NowPlayingButton extends PanelMenu.Button {
             return this._model.adjustVolume(
                 -step * readSetting(this._settings, 'volume-step') / 100);
 
-        if (step < 0)
+        const reverse = readSetting(this._settings, 'panel-scroll-reverse');
+        if ((step < 0) !== reverse)
             this._model.next();
         else
             this._model.previous();

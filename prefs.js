@@ -187,6 +187,12 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         });
         panel.add(scrollRow);
 
+        const scrollReverseRow = new Adw.SwitchRow({
+            title: _('Reverse direction'),
+            subtitle: _('Scroll down for the next track'),
+        });
+        panel.add(scrollReverseRow);
+
         const volumeStepRow = new Adw.SpinRow({
             title: _('Volume step'),
             subtitle: _('Percent per notch of the wheel'),
@@ -469,6 +475,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
         this._bindEnum(settings, 'panel-box', PANEL_BOXES, boxRow);
         this._bindEnum(settings, 'panel-text', PANEL_TEXTS, textRow);
         this._bindEnum(settings, 'panel-scroll', PANEL_SCROLLS, scrollRow);
+        settings.bind('panel-scroll-reverse', scrollReverseRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         settings.bind('volume-step', volumeStepRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         this._bindEnum(settings, 'panel-middle-click', MIDDLE_CLICKS, middleRow);
         this._bindEnum(settings, 'panel-right-click', RIGHT_CLICKS, rightRow);
@@ -522,6 +529,7 @@ export default class NowPlayingPreferences extends ExtensionPreferences {
             const appIcon = settings.get_boolean('panel-app-icon');
             iconRow.sensitive = (hasText || appIcon) && !ownText;
             controlsShownRow.sensitive = settings.get_boolean('panel-controls');
+            scrollReverseRow.sensitive = settings.get_string('panel-scroll') === 'track';
             volumeStepRow.sensitive = settings.get_string('panel-scroll') === 'volume';
             const colors = settings.get_string('spectrum-colors');
             // The waves keep the greys of the icon.

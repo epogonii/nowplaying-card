@@ -231,6 +231,11 @@
       <summary>Scrolling over the panel button</summary>
       <description>What the mouse wheel does over the button: nothing, switch tracks, or change the player volume.</description>
     </key>
+    <key name="panel-scroll-reverse" type="b">
+      <default>false</default>
+      <summary>Reverse the track direction</summary>
+      <description>Off, scrolling up goes to the next track and down to the previous one. On, down goes to the next track and up to the previous one.</description>
+    </key>
     <key name="volume-step" type="i">
       <default>5</default>
       <range min="1" max="25"/>
