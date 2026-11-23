@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.17
+
+- Cover art a player links from the web, or sends inline, never showed on
+  GNOME 49 and older: the card put the player's icon in its place (#17).
+
 ## 1.0.16
 
 - New switch on the Panel page, Reverse direction: scrolling down over the

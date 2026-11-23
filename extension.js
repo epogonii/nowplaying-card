@@ -2345,11 +2345,11 @@ const MediaCard = GObject.registerClass({
             height = h;
         });
         try {
-            const size = bytes.get_size();
-            for (let offset = 0; offset < size && width === 0; offset += ART_CHUNK) {
-                const length = Math.min(ART_CHUNK, size - offset);
-                loader.write_bytes(GLib.Bytes.new_from_bytes(bytes, offset, length));
-            }
+            // GLib.Bytes.new_from_bytes() is a method before GLib 2.88 and a
+            // static function after, so the chunks come from a plain array.
+            const data = bytes.toArray();
+            for (let offset = 0; offset < data.length && width === 0; offset += ART_CHUNK)
+                loader.write(data.subarray(offset, offset + ART_CHUNK));
         } catch {
             width = 0;
         }
