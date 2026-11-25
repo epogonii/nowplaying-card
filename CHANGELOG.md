@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.18
+
+- While the spectrum listened, the sound output could not go to sleep. With
+  Follow all sound that is all the time, so Bluetooth headphones with
+  multipoint would not switch to another device (#18). On PipeWire it now
+  listens without keeping the output awake.
+
 ## 1.0.17
 
 - Cover art a player links from the web, or sends inline, never showed on

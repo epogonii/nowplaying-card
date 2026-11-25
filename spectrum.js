@@ -17,6 +17,9 @@ const TICK_MS = 33;
 // Repeated lines are skipped, but not for long: the shell takes half a second
 // of nothing as silence.
 const REPEAT = 8;
+// A suspended output sends nothing at all, so this many ticks without sound
+// count as silence.
+const DRY = 4;
 
 const BANDS = 32;
 const LOWEST = 50;
@@ -33,8 +36,25 @@ const SILENCE = -80;
 const ATTACK = 0.3;
 const RELEASE = 0.1;
 
+// Passive, or the output could never suspend and a Bluetooth headset would
+// not switch to another device (#18). From PipeWire 1.7 on a passive stream
+// only hears the output with in-follow.
+function passiveMode() {
+    let version;
+    try {
+        const [, out] = GLib.spawn_command_line_sync('pipewire --version');
+        version = new TextDecoder().decode(out);
+    } catch {
+        return 'true';
+    }
+
+    const [, major = 0, minor = 0] = version.match(/libpipewire (\d+)\.(\d+)/) ?? [];
+    return major * 100 + Number(minor) >= 107 ? 'in-follow' : 'true';
+}
+
 const PIPELINE = [
-    'pulsesrc device=@DEFAULT_MONITOR@ client-name="Now Playing" latency-time=20000',
+    'pulsesrc device=@DEFAULT_MONITOR@ client-name="Now Playing" latency-time=20000 ' +
+        `stream-properties="props,node.passive=(string)${passiveMode()}"`,
     'audioconvert',
     'audioresample',
     `audio/x-raw,format=F32LE,rate=${RATE},channels=1`,
@@ -123,6 +143,7 @@ const values = new Uint16Array(BANDS);
 let top = null;
 let last = '';
 let skipped = 0;
+let dry = 0;
 
 function push(data) {
     let n = data.length;
@@ -267,8 +288,13 @@ function listen(pipeline) {
             fresh = true;
         }
 
-        if (fresh)
+        if (fresh) {
+            dry = 0;
             report();
+        } else if (++dry === DRY) {
+            ring.fill(0);
+            report();
+        }
         return GLib.SOURCE_CONTINUE;
     });
 
