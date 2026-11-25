@@ -6,6 +6,8 @@
   Follow all sound that is all the time, so Bluetooth headphones with
   multipoint would not switch to another device (#18). On PipeWire it now
   listens without keeping the output awake.
+- With nothing playing, the ribbon now lies flat. It used to keep a thin wave
+  (#18).
 
 ## 1.0.17
 

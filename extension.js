@@ -278,8 +278,10 @@ const WAVES = [
     [0.238, 0.066, 1.2, 2, 0.3, 3],
 ];
 const WAVE_LOOP_S = 3.9;
-// The ribbon is thin while it is quiet, so the sound has room to swell it.
+// The ribbon is thin while it is quiet, so the sound has room to swell it,
+// and flat with nothing playing (#18).
 const RIBBON_REST = 0.6;
+const RIBBON_FADE_S = 0.4;
 const RIBBON_REACH = 2.4;
 const RIBBON_PINCH = 0.04;
 const RIBBON_SWAY = 0.5;
@@ -383,6 +385,7 @@ class EqualizerIcon extends St.DrawingArea {
         this._start = GLib.get_monotonic_time();
         this._drift = 0;
         this._hue = HUE_STATIC;
+        this._swell = 0;
         this._resetLevels();
 
         // A new system theme means a new foreground colour: redraw with it. A
@@ -562,8 +565,10 @@ class EqualizerIcon extends St.DrawingArea {
             }
         } else if (!wanted) {
             this._stopTimer();
-            if (!this._animated)
+            if (!this._animated) {
                 this._resetLevels();
+                this._swell = this._playing ? 1 : 0;
+            }
         }
     }
 
@@ -576,7 +581,7 @@ class EqualizerIcon extends St.DrawingArea {
     }
 
     _atRest() {
-        return this._levels.every((level, i) =>
+        return this._swell === 0 && this._levels.every((level, i) =>
             level <= this._restLevel(i) && this._peaks[i] <= level);
     }
 
@@ -605,7 +610,7 @@ class EqualizerIcon extends St.DrawingArea {
         this.queue_repaint();
 
         // Flat with nothing playing: stop the clock until a sound comes.
-        if (this._timerId && !this._playing &&
+        if (this._timerId && !this._playing && this._swell === 0 &&
             this._levels.every(level => level === 0) &&
             this._peaks.every(peak => peak === 0)) {
             this._sleeping = now;
@@ -679,6 +684,10 @@ class EqualizerIcon extends St.DrawingArea {
         const step = Math.min(dt, 4 * this._frameMs / 1000);
         this._drift = (this._drift + step) % WAVE_LOOP_S;
         this._hue = (this._hue + step / HUE_PERIOD) % 1;
+
+        const swell = this._playing || this._levels.some((level, i) => level > this._restLevel(i)) ? 1 : 0;
+        const most = step / RIBBON_FADE_S;
+        this._swell += Math.max(-most, Math.min(most, swell - this._swell));
     }
 
     // Falls as on silence but never rises, so a pause stands as it was left.
@@ -1028,7 +1037,7 @@ class EqualizerIcon extends St.DrawingArea {
                 return Math.max(lifts[k][Math.max(far - 1, 0)], lifts[k][Math.min(far, count - 1)]);
             };
             const half = (x, i) => middle * narrow(x) * Math.min(1,
-                RIBBON_REST * rest * (RIBBON_PINCH + (1 - RIBBON_PINCH) * lobe(x) ** 1.3) +
+                RIBBON_REST * rest * this._swell * (RIBBON_PINCH + (1 - RIBBON_PINCH) * lobe(x) ** 1.3) +
                 RIBBON_REACH * reach * lift(i) * (RIBBON_SWAY + (1 - RIBBON_SWAY) * lobe(x)));
             const top = this._wavePoints(width, (x, i) => middle - half(x, i));
             const bottom = top.map(([x, y]) => [x, height - y]).reverse();
